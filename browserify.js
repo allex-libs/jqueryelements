@@ -1,0 +1,1 @@
+ALLEX.execSuite.libRegistry.register('allex_jqueryelementslib',require('./libindex')(ALLEX, ALLEX.execSuite.libRegistry.get('allex_applib'), ALLEX.execSuite.libRegistry.get('allex_applinkinglib'), ALLEX.execSuite.libRegistry.get('allex_templateslitelib')));

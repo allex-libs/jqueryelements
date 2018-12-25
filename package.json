@@ -1,0 +1,25 @@
+{
+  "name": "allex_jqueryelementslib",
+  "version": "1.0.0",
+  "description": "AllexJS lib with JQuery-compatible elements",
+  "main": "index.js",
+  "scripts": {
+    "test": "allex-mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/allex-libs/jqueryelements.git"
+  },
+  "keywords": [
+    "ecosystem:AllexJS",
+    "jquery",
+    "elements",
+    "lib"
+  ],
+  "author": "Andrija Petrovic <andrija.hers@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/allex-libs/jqueryelements/issues"
+  },
+  "homepage": "https://github.com/allex-libs/jqueryelements#readme"
+}
