@@ -1,1 +1,8 @@
-ALLEX.execSuite.libRegistry.register('allex_jqueryelementslib',require('./libindex')(ALLEX, ALLEX.execSuite.libRegistry.get('allex_applib'), ALLEX.execSuite.libRegistry.get('allex_applinkinglib'), ALLEX.execSuite.libRegistry.get('allex_templateslitelib')));
+var lR = ALLEX.execSuite.libRegistry;
+lR.register('allex_jqueryelementslib',require('./libindex')(
+  ALLEX,
+  lR.get('allex_applib'),
+  lR.get('allex_applinkinglib'),
+  lR.get('allex_templateslitelib'),
+  lR.get('allex_htmltemplateslib')
+));

@@ -88,6 +88,7 @@ function createTabViewProcessor (allex, routerlib, applib, templatelib) {
       var tabnames = Object.keys (config.tabs);
       Array.prototype.push.apply(refs, tabnames);
 
+      desc.logic = desc.logic || [];
       /*
       desc.logic.push ({
         triggers : '.!ready',

@@ -24,7 +24,7 @@ function createDataViewProcessor (allex, applib) {
       throw new Error('DataView '+path+'has no references for event '+event_name);
     }
     desc.logic.push ({
-      triggers : 'element.'+path+'.$element!'+event_name,
+      triggers : eventName(path, event_name, lib.isArray(desc.environments)),
       references : event_descriptor.references,
       handler : event_descriptor.handler
     });
@@ -34,7 +34,7 @@ function createDataViewProcessor (allex, applib) {
   DataViewProcessor.prototype._applyRowEventLink = function (desc, path, event_descriptor, event_name) {
     applib.misc.initLinks (desc);
     desc.links.push ({
-      source : 'element.'+path+'.$element!'+event_name,
+      source : eventName(path, event_name, lib.isArray(desc.environments)),
       target : event_descriptor.target,
       filter : event_descriptor.filter
     });
@@ -60,6 +60,7 @@ function createDataViewProcessor (allex, applib) {
     p_arent.options.elements.push ({
       name : view_name,
       type : view_type,
+      requires: view.requires,
       options : lib.extend({}, this.config.defaults ? this.config.defaults[view_type] : {}, view.config)
     });
 
@@ -67,6 +68,14 @@ function createDataViewProcessor (allex, applib) {
       lib.traverseShallow (view.rowEvents, this._processRowEvent.bind(this, desc, path));
     }
   };
+
+  function eventName (path, event_name, global) {
+    var ret = path+'.$element!'+event_name;
+    if (global) {
+      return 'element.'+ret;
+    }
+    return ret;
+  }
 
   applib.registerPreprocessor ('DataView', DataViewProcessor);
 }

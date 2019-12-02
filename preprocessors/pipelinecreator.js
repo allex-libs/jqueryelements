@@ -56,7 +56,15 @@ function createPipelineProcessor (allex, applib) {
 
   PItem.prototype.doOnSuccess = function (result) {
     this.container._reportDone(result);
-    if (lib.isFunction(this.desc.onSuccess)) this.desc.onSuccess.apply(null, this.getSuccessArgs(result));
+    if (lib.isFunction(this.desc.onSuccess)) {
+      this.desc.onSuccess.apply(null, this.getSuccessArgs(result));
+      return;
+    }
+    if (this.desc.onSuccess === 'standard') {
+      if (this.element) {
+        this.element.set('actual', false);
+      }
+    }
   };
 
   PItem.prototype.doOnError = function (result){

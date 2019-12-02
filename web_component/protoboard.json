@@ -1,12 +1,22 @@
 {
-  "js": {
-  },
   "browserify": {
     "dist/browserified.js":"../browserify.js"
   },
   "exclude": {
     "jshint": [
       "browserified.js"
+    ]
+  },
+  "additionaltargets": {
+    "js": [["dist", "jquery.jkey.js"]]
+  },
+  "dependencies": {
+    "js": [
+      "allex:app:lib",
+      "node_modules/jquery/dist/jquery.min.js",
+      "allex:templateslite:lib",
+      "allex:htmltemplates:lib",
+      "node_modules/webfontloader/webfontloader.js"
     ]
   },
   "protoboard": {

@@ -1,0 +1,6 @@
+{
+  "source": {
+    "include": [".", "modifiers", "preprocessors"],
+    "includePattern": ".+\\js?$"
+  }
+}

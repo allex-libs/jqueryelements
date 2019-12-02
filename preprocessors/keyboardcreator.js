@@ -39,7 +39,7 @@ function createKeyboardProcessor (allex, applib) {
     if (!this.config) return; //pa sto me uopste zoves ....
     if (!this.config.element_name) throw new Error ('No element input');
     if (!this.config.events) throw new Error ('No events listed');
-    desc.elements.push ({
+    (desc.options.elements || desc.elements).push ({
       name : this.config.element_name,
       type : 'KeyboardInputElement',
       options : {

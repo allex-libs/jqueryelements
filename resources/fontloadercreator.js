@@ -1,4 +1,4 @@
-(function (allex, module, applib, $) {
+function createFontLoader(allex, applib, $) {
   'use strict';
 
   var lib = allex.lib,
@@ -34,7 +34,7 @@
 
   FontLoader.prototype.doLoad = function () {
     var d = q.defer();
-    $(document).ready(this._go.bind(this, d));
+    jQuery(document).ready(this._go.bind(this, d));
     return d;
   };
 
@@ -48,7 +48,9 @@
     });
   };
 
-  module.resources.FontLoader = FontLoader;
+  //module.resources.FontLoader = FontLoader;
   applib.registerResourceType('FontLoader', FontLoader);
 
-})(ALLEX, ALLEX.WEB_COMPONENTS.allex_web_webappcomponent, ALLEX.WEB_COMPONENTS.allex_applib, jQuery);
+}
+
+module.exports = createFontLoader;

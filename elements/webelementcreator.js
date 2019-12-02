@@ -11,6 +11,7 @@ function createWebElement (execlib, applib, templatelib) {
   function WebElement (id, options)  {
     BasicElement.call(this, id, options);
     this.$element = null;
+    this.elementCreatedByMe = false;
     this._addHook ('onPreShow');
     this._addHook ('onPreHide');
     this._addHook ('onShown');
@@ -30,6 +31,11 @@ function createWebElement (execlib, applib, templatelib) {
       this._helpers.destroy();
     }
     this._helpers = null;
+    if (this.$element) {
+      if (this.elementCreatedByMe) {
+        this.$element.remove();
+      }
+    }
     this.$element = null;
     BasicElement.prototype.__cleanUp.call(this);
   };
@@ -85,29 +91,39 @@ function createWebElement (execlib, applib, templatelib) {
     }
   }
 
-  WebElement.prototype.initialize = function () {
-    var selector = this.getConfigVal('self_selector')||'#';
-    var finder = this.tryToCreatejQueryElement();
-    if (!this.$element || !this.$element.length) {
-      if (!this.tryToCreateMarkup()) {
-        throw new Error('Unable to find DOM element '+this.get('id')+' using jQuery selector '+selector+' ('+finder+')');
-      }
-      finder = this.tryToCreatejQueryElement();
-      if (!this.$element || !this.$element.length) {
-        throw new Error('Unable to find DOM element '+this.get('id')+' using jQuery selector '+selector+' ('+finder+') even after creation with default_markup '+this.getConfigVal('default_markup'));
-      }
+  function fireJqueryDecorator (element, jquerydecorator) {
+    if (lib.isFunction(jquerydecorator)) {
+      jquerydecorator(element);
     }
-    this.$element.attr('allexid', this.get('id'));
-    BasicElement.prototype.initialize.call(this);
+  }
+
+  WebElement.prototype.doThejQueryCreation = function () {
+    this.createjQueryElement();
+    WebElement.jqueryDecorators.forEach(fireJqueryDecorator.bind(null, this.$element));
   };
 
-  WebElement.prototype.fireInitializationDone = function () {
+  WebElement.prototype.doThejQueryHooks = function () {
     this.attachHook ('onPreShow', this.getConfigVal('onPreShow'));
     this.attachHook ('onPreHide', this.getConfigVal('onPreHide'));
     this.attachHook ('onShown', this.getConfigVal('onShown'));
     this.attachHook ('onHidden', this.getConfigVal('onHidden'));
-    this.set_actual(!!this.get('actual'));
-    BasicElement.prototype.fireInitializationDone.call(this);
+    //this.set_actual(!!this.get('actual'));
+  };
+
+  WebElement.prototype.createjQueryElement = function () {
+    var selector = this.getConfigVal('self_selector')||'#';
+    var finder = this.tryToCreatejQueryElement();
+    if (!(this.$element && this.$element.length)) {
+      if (!this.tryToCreateMarkup()) {
+        throw new Error('Unable to find DOM element '+this.get('id')+' using jQuery selector '+selector+' ('+finder+')');
+      }
+      finder = this.tryToCreatejQueryElement();
+      if (!(this.$element && this.$element.length)) {
+        throw new Error('Unable to find DOM element '+this.get('id')+' using jQuery selector '+selector+' ('+finder+') even after creation with default_markup '+this.getDefaultMarkup());
+      }
+    }
+    this.elementCreatedByMe = true;
+    this.$element.attr('allexid', this.get('id'));
   };
 
   WebElement.prototype.tryToCreatejQueryElement = function () {
@@ -127,7 +143,7 @@ function createWebElement (execlib, applib, templatelib) {
   };
 
   WebElement.prototype.tryToCreateMarkup = function () {
-    var markup = templatelib.process(this.getConfigVal('default_markup')), appender, appendee;
+    var markup = templatelib.process(this.getDefaultMarkup()), appender, appendee;
     if (!markup) {
       return false;
     }
@@ -141,6 +157,10 @@ function createWebElement (execlib, applib, templatelib) {
     decorateElement(appendee, this.getConfigVal('self_selector')||'#', this.get('id'));
     appender.append(appendee);
     return true;
+  };
+
+  WebElement.prototype.getDefaultMarkup = function () {
+    return this.getConfigVal('default_markup');
   };
 
   WebElement.prototype.set_actual = function (val) {
@@ -162,8 +182,8 @@ function createWebElement (execlib, applib, templatelib) {
     }
   };
 
-  WebElement.prototype.onLoadFailed = function () {
-    BasicElement.prototype.onLoadFailed.call(this);
+  WebElement.prototype.onLoadFailed = function (reason) {
+    BasicElement.prototype.onLoadFailed.call(this, reason);
   };
 
   WebElement.prototype.onLoadProgress = function () {
@@ -315,7 +335,6 @@ function createWebElement (execlib, applib, templatelib) {
       refmarkups = this.getConfigVal('reference_markups');
       if (refmarkups && refmarkups[type]) {
         ret = jQuery(refmarkups[type]);
-        console.log('ipak imam domReference', ret);
       }
     }
     if (!ret.length) {
@@ -327,6 +346,11 @@ function createWebElement (execlib, applib, templatelib) {
   WebElement.prototype.raiseEvent = function () {
     this.$element.trigger.apply(this.$element, arguments);
   };
+
+  WebElement.prototype.preInitializationMethodNames = BasicElement.prototype.preInitializationMethodNames.concat('doThejQueryCreation');
+  WebElement.prototype.postInitializationMethodNames = BasicElement.prototype.postInitializationMethodNames.concat('doThejQueryHooks');
+
+  WebElement.jqueryDecorators = [];
 
   WebElement.ResourcesSchema = {
     type : "array",

@@ -1,7 +1,137 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
-ALLEX.execSuite.libRegistry.register('allex_jqueryelementslib',require('./libindex')(ALLEX, ALLEX.execSuite.libRegistry.get('allex_applib'), ALLEX.execSuite.libRegistry.get('allex_applinkinglib'), ALLEX.execSuite.libRegistry.get('allex_templateslitelib')));
+var lR = ALLEX.execSuite.libRegistry;
+lR.register('allex_jqueryelementslib',require('./libindex')(
+  ALLEX,
+  lR.get('allex_applib'),
+  lR.get('allex_applinkinglib'),
+  lR.get('allex_templateslitelib'),
+  lR.get('allex_htmltemplateslib')
+));
 
-},{"./libindex":6}],2:[function(require,module,exports){
+},{"./libindex":10}],2:[function(require,module,exports){
+function createClickable (execlib, applib, templatelib, htmltemplateslib) {
+  'use strict';
+
+  var lib = execlib.lib,
+    WebElement = applib.getElementType('WebElement'),
+    o = templatelib.override,
+    m = htmltemplateslib;
+
+  function createClickable (options) {
+    return o(m[options.type || 'button'],
+      'CLASS', options.class || '',
+      'ATTRS', options.attrs || '',
+      'CONTENTS', options.text
+    );
+  }
+
+  function ClickableElement (id, options) {
+    options.default_markup = options.default_markup || createClickable(options.clickable || {});
+    WebElement.call(this, id, options);
+    this.clicked = new lib.HookCollection();
+    this.clickvalue = null;
+    if (options && ('enabled' in options)) {
+      this.set('enabled', options.enabled);
+    }
+  }
+  lib.inherit (ClickableElement, WebElement);
+  ClickableElement.prototype.__cleanUp = function () {
+    this.clickvalue = null;
+    if (this.clicked) {
+      this.clicked.destroy();
+    }
+    this.clicked = null;
+    WebElement.prototype.__cleanUp.call(this);
+  };
+  ClickableElement.prototype.createjQueryElement = function () {
+    WebElement.prototype.createjQueryElement.call(this);
+    this.$element.on('click', this.onElementClicked.bind(this));
+  };
+  ClickableElement.prototype.onElementClicked = function (jqueryevent) {
+    if (!this.get('enabled')) {
+      return;
+    }
+    this.clicked.fire.call(this.clicked, [jqueryevent, this.clickvalue]);
+  };
+  ClickableElement.prototype.set_enabled = function (val) {
+    if (this.isButton()) {
+      return this.setEnabledOnButton(val);
+    }
+    if (this.isAnchor()) {
+      return this.setEnabledOnAnchor(val);
+    }
+    return false;
+  };
+  ClickableElement.prototype.setEnabledOnButton = function (val) {
+    if (!this.$element) {
+      return false;
+    }
+    this.$element.prop('disabled', !val);
+    return true;
+  };
+  ClickableElement.prototype.setEnabledOnAnchor = function (val) {
+    if (!this.setEnabledOnButton(val)) {
+      this.$element.removeClass('disabled');
+      return false;
+    }
+    this.$element.addClass('disabled');
+  };
+  ClickableElement.prototype.get_enabled = function () {
+    if (this.isButton()) {
+      return this.getEnabledOnButton();
+    }
+    if (this.isAnchor()) {
+      return this.getEnabledOnAnchor();
+    }
+    return false;
+  };
+  ClickableElement.prototype.getEnabledOnButton = function () {
+    return this.$element && !this.$element.prop('disabled');
+  };
+  ClickableElement.prototype.getEnabledOnAnchor = function () {
+    return this.getEnabledOnButton();
+  };
+  ClickableElement.prototype.isButton = function () {
+    return this.$element && this.$element.is('button');
+  };
+  ClickableElement.prototype.isAnchor = function () {
+    return this.$element && this.$element.is('a');
+  };
+
+
+  applib.registerElementType('ClickableElement', ClickableElement);
+}
+
+module.exports = createClickable;
+
+},{}],3:[function(require,module,exports){
+function createDataAwareChildElement (execlib, DataElementFollowerMixin, applib) {
+  'use strict';
+
+  var lib = execlib.lib,
+    WebElement = applib.getElementType('WebElement');
+
+  function DataAwareChildElement (id, options) {
+    WebElement.call(this, id, options);
+    DataElementFollowerMixin.call(this);
+  }
+  lib.inherit (DataAwareChildElement, WebElement);
+  DataElementFollowerMixin.addMethods (DataAwareChildElement);
+
+  DataAwareChildElement.prototype.__cleanUp = function () {
+    DataElementFollowerMixin.prototype.__cleanUp.call(this);
+    WebElement.prototype.__cleanUp.call(this);
+  };
+
+  DataAwareChildElement.prototype.postInitializationMethodNames = WebElement.prototype.postInitializationMethodNames.concat('startListeningToParentData');
+
+  applib.registerElementType ('DataAwareChild',DataAwareChildElement);
+
+}
+
+module.exports = createDataAwareChildElement;
+
+},{}],4:[function(require,module,exports){
 function createDataAwareElement (execlib, DataElementMixIn, applib) {
   'use strict';
 
@@ -20,13 +150,122 @@ function createDataAwareElement (execlib, DataElementMixIn, applib) {
     WebElement.prototype.__cleanUp.call(this);
   };
 
+  DataAwareElement.prototype.getDefaultMarkup = function () {
+    var ret = WebElement.prototype.getDefaultMarkup.call(this), dm;
+    if (lib.isVal(ret)) {
+      return ret;
+    }
+    dm = this.getConfigVal('data_markup');
+    if (!lib.isVal(dm)) {
+      return ret;
+    }
+    return this.produceDataMarkup(dm, this.get('data'));
+  };
+  DataAwareElement.prototype.preInitializationMethodNames = WebElement.prototype.preInitializationMethodNames.concat('preInitializeData');
+  DataAwareElement.prototype.postInitializationMethodNames = WebElement.prototype.postInitializationMethodNames.concat('postInitializeData');
+
   applib.registerElementType ('DataAwareElement',DataAwareElement);
 
 }
 
 module.exports = createDataAwareElement;
 
-},{}],3:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
+function createFromDataCreator (execlib, applib) {
+  'use strict';
+
+  var lib = execlib.lib,
+    BasicElement = applib.BasicElement,
+    DataAwareElement = applib.getElementType('DataAwareElement');
+
+  function FromDataCreatorElement (id, options) {
+    /* need to be more delicate
+    if (!(options && options.subDescriptor)) {
+      console.error('error in options', options);
+      throw new Error('options must have a subDescriptor field, with the descriptor for the children');
+    }
+    if (!(options && lib.isFunction(options.data2Name))) {
+      console.error('error in options', options);
+      throw new Error('options must have a data2Name field, with the naming function for the children');
+    }
+    */
+    DataAwareElement.call(this, id, options);
+    this.subElements = [];
+  }
+  lib.inherit(FromDataCreatorElement, DataAwareElement);
+  FromDataCreatorElement.prototype.__cleanUp = function () {
+    if (this.subElements) {
+      lib.arryDestroyAll(this.subElements);
+    }
+    this.subElements = null;
+    DataAwareElement.prototype.__cleanUp.call(this);
+  };
+  FromDataCreatorElement.prototype.set_data = function (data) {
+    if (!lib.isArray(this.subElements)) {
+      return this.super_set_data(data);
+    }
+    lib.arryDestroyAll(this.subElements);
+    this.subElements = [];
+    if (lib.isArray(data)) {
+      this.createFromArryData(data);
+    }
+    return this.super_set_data(data);
+  };
+  FromDataCreatorElement.prototype.super_set_data = function (data) {
+    return DataAwareElement.prototype.set_data(data);
+  };
+  FromDataCreatorElement.prototype.createFromArryData = function (data) {
+    data.forEach(this.createFromArryItem.bind(this));
+  };
+  FromDataCreatorElement.prototype.createFromArryItem = function (item) {
+    var desc = this.createDescriptorFromArryItem(item);
+    if (desc) {
+      desc.options = desc.options || {};
+      desc.options.data = item;
+      BasicElement.createElement(desc, this.addFromDataChild.bind(this));
+      return;
+    }
+    console.warn(this.constructor.name, 'created no descriptor from', item, 'so no child will be produced');
+  };
+  FromDataCreatorElement.prototype.addFromDataChild = function (chld) {
+    this.subElements.push(this.destructableForSubElements(chld));
+    this.addChild(chld);
+  };
+  FromDataCreatorElement.prototype.destructableForSubElements = function (chld) {
+    return chld;
+  };
+  FromDataCreatorElement.prototype.createDescriptorFromArryItem = function (item) {
+    if (lib.isFunction(this.config.subDescriptorFromData)) {
+      return this.config.subDescriptorFromData(item);
+    }
+    /*
+    lib.extend({
+      name: this.config.data2Name(item)
+    }, this.config.subDescriptor)
+    */
+  };
+
+
+  applib.registerElementType('FromDataCreator', FromDataCreatorElement);
+
+}
+
+module.exports = createFromDataCreator;
+
+},{}],6:[function(require,module,exports){
+function createElements (execlib, applib, templatelib, htmltemplateslib, mixins) {
+  'use strict';
+
+  require('./webelementcreator')(execlib, applib, templatelib);
+  require('./dataawareelementcreator')(execlib, mixins.DataElementMixin, applib);
+  require('./dataawarechildcreator')(execlib, mixins.DataElementFollowerMixin, applib);
+  require('./clickablecreator')(execlib, applib, templatelib, htmltemplateslib);
+  require('./fromdatacreatorcreator')(execlib, applib);
+}
+
+module.exports = createElements;
+
+},{"./clickablecreator":2,"./dataawarechildcreator":3,"./dataawareelementcreator":4,"./fromdatacreatorcreator":5,"./webelementcreator":7}],7:[function(require,module,exports){
 function createWebElement (execlib, applib, templatelib) {
   'use strict';
 
@@ -40,6 +279,7 @@ function createWebElement (execlib, applib, templatelib) {
   function WebElement (id, options)  {
     BasicElement.call(this, id, options);
     this.$element = null;
+    this.elementCreatedByMe = false;
     this._addHook ('onPreShow');
     this._addHook ('onPreHide');
     this._addHook ('onShown');
@@ -59,6 +299,11 @@ function createWebElement (execlib, applib, templatelib) {
       this._helpers.destroy();
     }
     this._helpers = null;
+    if (this.$element) {
+      if (this.elementCreatedByMe) {
+        this.$element.remove();
+      }
+    }
     this.$element = null;
     BasicElement.prototype.__cleanUp.call(this);
   };
@@ -114,29 +359,39 @@ function createWebElement (execlib, applib, templatelib) {
     }
   }
 
-  WebElement.prototype.initialize = function () {
-    var selector = this.getConfigVal('self_selector')||'#';
-    var finder = this.tryToCreatejQueryElement();
-    if (!this.$element || !this.$element.length) {
-      if (!this.tryToCreateMarkup()) {
-        throw new Error('Unable to find DOM element '+this.get('id')+' using jQuery selector '+selector+' ('+finder+')');
-      }
-      finder = this.tryToCreatejQueryElement();
-      if (!this.$element || !this.$element.length) {
-        throw new Error('Unable to find DOM element '+this.get('id')+' using jQuery selector '+selector+' ('+finder+') even after creation with default_markup '+this.getConfigVal('default_markup'));
-      }
+  function fireJqueryDecorator (element, jquerydecorator) {
+    if (lib.isFunction(jquerydecorator)) {
+      jquerydecorator(element);
     }
-    this.$element.attr('allexid', this.get('id'));
-    BasicElement.prototype.initialize.call(this);
+  }
+
+  WebElement.prototype.doThejQueryCreation = function () {
+    this.createjQueryElement();
+    WebElement.jqueryDecorators.forEach(fireJqueryDecorator.bind(null, this.$element));
   };
 
-  WebElement.prototype.fireInitializationDone = function () {
+  WebElement.prototype.doThejQueryHooks = function () {
     this.attachHook ('onPreShow', this.getConfigVal('onPreShow'));
     this.attachHook ('onPreHide', this.getConfigVal('onPreHide'));
     this.attachHook ('onShown', this.getConfigVal('onShown'));
     this.attachHook ('onHidden', this.getConfigVal('onHidden'));
-    this.set_actual(!!this.get('actual'));
-    BasicElement.prototype.fireInitializationDone.call(this);
+    //this.set_actual(!!this.get('actual'));
+  };
+
+  WebElement.prototype.createjQueryElement = function () {
+    var selector = this.getConfigVal('self_selector')||'#';
+    var finder = this.tryToCreatejQueryElement();
+    if (!(this.$element && this.$element.length)) {
+      if (!this.tryToCreateMarkup()) {
+        throw new Error('Unable to find DOM element '+this.get('id')+' using jQuery selector '+selector+' ('+finder+')');
+      }
+      finder = this.tryToCreatejQueryElement();
+      if (!(this.$element && this.$element.length)) {
+        throw new Error('Unable to find DOM element '+this.get('id')+' using jQuery selector '+selector+' ('+finder+') even after creation with default_markup '+this.getDefaultMarkup());
+      }
+    }
+    this.elementCreatedByMe = true;
+    this.$element.attr('allexid', this.get('id'));
   };
 
   WebElement.prototype.tryToCreatejQueryElement = function () {
@@ -156,7 +411,7 @@ function createWebElement (execlib, applib, templatelib) {
   };
 
   WebElement.prototype.tryToCreateMarkup = function () {
-    var markup = templatelib.process(this.getConfigVal('default_markup')), appender, appendee;
+    var markup = templatelib.process(this.getDefaultMarkup()), appender, appendee;
     if (!markup) {
       return false;
     }
@@ -170,6 +425,10 @@ function createWebElement (execlib, applib, templatelib) {
     decorateElement(appendee, this.getConfigVal('self_selector')||'#', this.get('id'));
     appender.append(appendee);
     return true;
+  };
+
+  WebElement.prototype.getDefaultMarkup = function () {
+    return this.getConfigVal('default_markup');
   };
 
   WebElement.prototype.set_actual = function (val) {
@@ -191,8 +450,8 @@ function createWebElement (execlib, applib, templatelib) {
     }
   };
 
-  WebElement.prototype.onLoadFailed = function () {
-    BasicElement.prototype.onLoadFailed.call(this);
+  WebElement.prototype.onLoadFailed = function (reason) {
+    BasicElement.prototype.onLoadFailed.call(this, reason);
   };
 
   WebElement.prototype.onLoadProgress = function () {
@@ -344,7 +603,6 @@ function createWebElement (execlib, applib, templatelib) {
       refmarkups = this.getConfigVal('reference_markups');
       if (refmarkups && refmarkups[type]) {
         ret = jQuery(refmarkups[type]);
-        console.log('ipak imam domReference', ret);
       }
     }
     if (!ret.length) {
@@ -356,6 +614,11 @@ function createWebElement (execlib, applib, templatelib) {
   WebElement.prototype.raiseEvent = function () {
     this.$element.trigger.apply(this.$element, arguments);
   };
+
+  WebElement.prototype.preInitializationMethodNames = BasicElement.prototype.preInitializationMethodNames.concat('doThejQueryCreation');
+  WebElement.prototype.postInitializationMethodNames = BasicElement.prototype.postInitializationMethodNames.concat('doThejQueryHooks');
+
+  WebElement.jqueryDecorators = [];
 
   WebElement.ResourcesSchema = {
     type : "array",
@@ -383,7 +646,7 @@ function createWebElement (execlib, applib, templatelib) {
 
 module.exports = createWebElement;
 
-},{}],4:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 function createHandlers (execlib, applib, linkinglib) {
   'use strict';
 
@@ -576,7 +839,7 @@ function createHandlers (execlib, applib, linkinglib) {
 
 module.exports = createHandlers;
 
-},{}],5:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 function createJQueryCreate (execlib, templatelib) {
   'use stict';
 
@@ -598,21 +861,31 @@ function createJQueryCreate (execlib, templatelib) {
 
 module.exports = createJQueryCreate;
 
-},{}],6:[function(require,module,exports){
-function createLib (execlib, applib, linkinglib, templatelib) {
+},{}],10:[function(require,module,exports){
+/**
+ * A library that uses {@link allex://allex_applib} and jQuery
+ * to build the basic Web App functionality.
+ *
+ * Check the tutorials
+ * - {@tutorial simplest}
+ *
+ * to gain a better insight in how App works.
+ *
+ * @namespace allex_jqueryelementslib
+ */
+function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib) {
   'use strict';
 
-  var DataElementMixIn = require('./mixins/dataelementmixincreator')(execlib),
-    routerlib = require('./misc/router')(execlib),
+  var routerlib = require('./misc/router')(execlib),
     jQueryCreate = require('./jquerycreatecreator')(execlib, templatelib);
 
   require('./handlers')(execlib, applib, linkinglib);
 
+  require('./resources/fontloadercreator')(execlib, applib);
   require('./resources/urlgeneratorcreator')(execlib, applib);
   require('./resources/throbbercreator')(execlib, applib);
 
-  require('./elements/webelementcreator')(execlib, applib, templatelib);
-  require('./elements/dataawareelementcreator')(execlib, DataElementMixIn, applib);
+  require('./elements')(execlib, applib, templatelib, htmltemplateslib, applib.mixins);
 
   require('./modifiers/selectorcreator')(execlib, applib);
   require('./modifiers/routecontrollercreator')(execlib, applib);
@@ -626,7 +899,6 @@ function createLib (execlib, applib, linkinglib, templatelib) {
 
   return {
     jQueryCreate: jQueryCreate,
-    DataElementMixIn: DataElementMixIn,
     RouterMixin: routerlib.RouterMixin,
     Router: routerlib.Router,
     RoleRouter: routerlib.RoleRouter
@@ -635,7 +907,7 @@ function createLib (execlib, applib, linkinglib, templatelib) {
 
 module.exports = createLib;
 
-},{"./elements/dataawareelementcreator":2,"./elements/webelementcreator":3,"./handlers":4,"./jquerycreatecreator":5,"./misc/router":7,"./mixins/dataelementmixincreator":8,"./modifiers/routecontrollercreator":9,"./modifiers/selectorcreator":10,"./preprocessors/dataviewcreator":11,"./preprocessors/keyboardcreator":12,"./preprocessors/logoutdeactivatorcreator":13,"./preprocessors/pipelinecreator":14,"./preprocessors/roleroutercreator":15,"./preprocessors/tabviewcreator":16,"./resources/throbbercreator":17,"./resources/urlgeneratorcreator":18}],7:[function(require,module,exports){
+},{"./elements":6,"./handlers":8,"./jquerycreatecreator":9,"./misc/router":11,"./modifiers/routecontrollercreator":12,"./modifiers/selectorcreator":13,"./preprocessors/dataviewcreator":14,"./preprocessors/keyboardcreator":15,"./preprocessors/logoutdeactivatorcreator":16,"./preprocessors/pipelinecreator":17,"./preprocessors/roleroutercreator":18,"./preprocessors/tabviewcreator":19,"./resources/fontloadercreator":20,"./resources/throbbercreator":21,"./resources/urlgeneratorcreator":22}],11:[function(require,module,exports){
 function createRouterLib (allex) {
   'use strict';
 
@@ -878,51 +1150,7 @@ function createRouterLib (allex) {
 
 module.exports = createRouterLib;
 
-},{}],8:[function(require,module,exports){
-function createDataElementMixin (execlib) {
-  'use strict';
-
-  var lib = execlib.lib,
-    q = lib.q;
-
-  function DataElementMixIn () {
-    this.data = null;
-    this.busy = false;
-  }
-
-  DataElementMixIn.prototype.__cleanUp = function () {
-    this.data = null;
-    this.busy = null;
-  };
-
-  DataElementMixIn.prototype.set_data = function (data) {
-    var f = this.getConfigVal('dataHandler');
-    if (lib.isFunction(f)) return f(this.$element, data);
-
-    if (this.data === data) return false;
-    this.data = data;
-    return true;
-  };
-
-  DataElementMixIn.prototype.hasDataChanged = function (ret) {
-    return lib.isUndef(ret) || ret === true;
-  };
-
-  DataElementMixIn.prototype.set_busy = function (val) {
-    this.busy = val;
-    console.log(this.get('id'), 'reported busy', val);
-  };
-
-  DataElementMixIn.addMethods = function (chld) {
-    lib.inheritMethods (chld, DataElementMixIn, 'set_data', 'hasDataChanged', 'set_busy');
-  };
-
-  return DataElementMixIn;
-}
-
-module.exports = createDataElementMixin;
-
-},{}],9:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 function createRouteController (allex, applib) {
   'use strict';
 
@@ -950,7 +1178,7 @@ function createRouteController (allex, applib) {
 
 module.exports = createRouteController;
 
-},{}],10:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 function createSelectorModifier (allex, applib) {
   'use strict';
 
@@ -1010,7 +1238,7 @@ function createSelectorModifier (allex, applib) {
 
 module.exports = createSelectorModifier;
 
-},{}],11:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 function createDataViewProcessor (allex, applib) {
   'use strict';
 
@@ -1037,7 +1265,7 @@ function createDataViewProcessor (allex, applib) {
       throw new Error('DataView '+path+'has no references for event '+event_name);
     }
     desc.logic.push ({
-      triggers : 'element.'+path+'.$element!'+event_name,
+      triggers : eventName(path, event_name, lib.isArray(desc.environments)),
       references : event_descriptor.references,
       handler : event_descriptor.handler
     });
@@ -1047,7 +1275,7 @@ function createDataViewProcessor (allex, applib) {
   DataViewProcessor.prototype._applyRowEventLink = function (desc, path, event_descriptor, event_name) {
     applib.misc.initLinks (desc);
     desc.links.push ({
-      source : 'element.'+path+'.$element!'+event_name,
+      source : eventName(path, event_name, lib.isArray(desc.environments)),
       target : event_descriptor.target,
       filter : event_descriptor.filter
     });
@@ -1073,6 +1301,7 @@ function createDataViewProcessor (allex, applib) {
     p_arent.options.elements.push ({
       name : view_name,
       type : view_type,
+      requires: view.requires,
       options : lib.extend({}, this.config.defaults ? this.config.defaults[view_type] : {}, view.config)
     });
 
@@ -1081,12 +1310,20 @@ function createDataViewProcessor (allex, applib) {
     }
   };
 
+  function eventName (path, event_name, global) {
+    var ret = path+'.$element!'+event_name;
+    if (global) {
+      return 'element.'+ret;
+    }
+    return ret;
+  }
+
   applib.registerPreprocessor ('DataView', DataViewProcessor);
 }
 
 module.exports = createDataViewProcessor;
 
-},{}],12:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 function createKeyboardProcessor (allex, applib) {
   'use strict';
 
@@ -1128,7 +1365,7 @@ function createKeyboardProcessor (allex, applib) {
     if (!this.config) return; //pa sto me uopste zoves ....
     if (!this.config.element_name) throw new Error ('No element input');
     if (!this.config.events) throw new Error ('No events listed');
-    desc.elements.push ({
+    (desc.options.elements || desc.elements).push ({
       name : this.config.element_name,
       type : 'KeyboardInputElement',
       options : {
@@ -1142,7 +1379,7 @@ function createKeyboardProcessor (allex, applib) {
 
 module.exports = createKeyboardProcessor;
 
-},{}],13:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 function createLogoutDeactivatorProcessor (allex, applib) {
   'use strict';
   var lib = allex.lib,
@@ -1229,7 +1466,7 @@ function createLogoutDeactivatorProcessor (allex, applib) {
 
 module.exports = createLogoutDeactivatorProcessor;
 
-},{}],14:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 function createPipelineProcessor (allex, applib) {
   'use strict';
   var lib = allex.lib,
@@ -1288,7 +1525,15 @@ function createPipelineProcessor (allex, applib) {
 
   PItem.prototype.doOnSuccess = function (result) {
     this.container._reportDone(result);
-    if (lib.isFunction(this.desc.onSuccess)) this.desc.onSuccess.apply(null, this.getSuccessArgs(result));
+    if (lib.isFunction(this.desc.onSuccess)) {
+      this.desc.onSuccess.apply(null, this.getSuccessArgs(result));
+      return;
+    }
+    if (this.desc.onSuccess === 'standard') {
+      if (this.element) {
+        this.element.set('actual', false);
+      }
+    }
   };
 
   PItem.prototype.doOnError = function (result){
@@ -1585,7 +1830,7 @@ function createPipelineProcessor (allex, applib) {
 module.exports = createPipelineProcessor;
 
 
-},{}],15:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 function createRoleRouterPreprocessor (allex, routerlib, applib) {
   'use strict';
   var lib = allex.lib,
@@ -1750,7 +1995,7 @@ function createRoleRouterPreprocessor (allex, routerlib, applib) {
 
 module.exports = createRoleRouterPreprocessor;
 
-},{}],16:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 function createTabViewProcessor (allex, routerlib, applib, templatelib) {
   'use strict';
   var lib = allex.lib,
@@ -1841,6 +2086,7 @@ function createTabViewProcessor (allex, routerlib, applib, templatelib) {
       var tabnames = Object.keys (config.tabs);
       Array.prototype.push.apply(refs, tabnames);
 
+      desc.logic = desc.logic || [];
       /*
       desc.logic.push ({
         triggers : '.!ready',
@@ -1909,7 +2155,65 @@ function createTabViewProcessor (allex, routerlib, applib, templatelib) {
 
 module.exports = createTabViewProcessor;
 
-},{}],17:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
+function createFontLoader(allex, applib, $) {
+  'use strict';
+
+  var lib = allex.lib,
+    BasicResourceLoader = applib.BasicResourceLoader,
+    q = lib.q;
+
+  var CONFIG_SCHEMA = {
+    type : 'object',
+    properties: {
+      urls : {
+        type: 'array',
+        items: {type: 'string'}
+      },
+      families : {
+        type : 'array',
+        items: {type: 'string'}
+      },
+      ispermanent : {type : 'boolean'}
+    }
+  };
+
+  function FontLoader (options) {
+    BasicResourceLoader.call(this, lib.extend ({} , options, {ispermanent : true}));
+    if (!window.WebFont) throw new Error('No WebFont component loaded, unable to load resource');
+  }
+  lib.inherit(FontLoader, BasicResourceLoader);
+  FontLoader.prototype.__cleanUp = function () {
+    BasicResourceLoader.prototype.__cleanUp.call(this);
+  };
+
+  FontLoader.prototype.CONFIG_SCHEMA = function () { return CONFIG_SCHEMA; };
+  FontLoader.prototype.DEFAULT_CONFIG = function () { return null; };
+
+  FontLoader.prototype.doLoad = function () {
+    var d = q.defer();
+    jQuery(document).ready(this._go.bind(this, d));
+    return d;
+  };
+
+  FontLoader.prototype._go = function (defer) {
+    WebFont.load({
+      custom : {
+        families: this.getConfigVal('families'),
+        urls : this.getConfigVal('urls')
+      },
+      active: defer.resolve.bind(defer, 'ok')
+    });
+  };
+
+  //module.resources.FontLoader = FontLoader;
+  applib.registerResourceType('FontLoader', FontLoader);
+
+}
+
+module.exports = createFontLoader;
+
+},{}],21:[function(require,module,exports){
 function createThrobberResource (allex, applib) {
   'use strict';
 
@@ -1993,7 +2297,7 @@ function createThrobberResource (allex, applib) {
 
 module.exports = createThrobberResource;
 
-},{}],18:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 function createURLGeneratorResource (execlib, applib) {
   var lib = execlib.lib,
   BasicResourceLoader = applib.BasicResourceLoader,

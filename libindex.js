@@ -1,17 +1,27 @@
-function createLib (execlib, applib, linkinglib, templatelib) {
+/**
+ * A library that uses {@link allex://allex_applib} and jQuery
+ * to build the basic Web App functionality.
+ *
+ * Check the tutorials
+ * - {@tutorial simplest}
+ *
+ * to gain a better insight in how App works.
+ *
+ * @namespace allex_jqueryelementslib
+ */
+function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib) {
   'use strict';
 
-  var DataElementMixIn = require('./mixins/dataelementmixincreator')(execlib),
-    routerlib = require('./misc/router')(execlib),
+  var routerlib = require('./misc/router')(execlib),
     jQueryCreate = require('./jquerycreatecreator')(execlib, templatelib);
 
   require('./handlers')(execlib, applib, linkinglib);
 
+  require('./resources/fontloadercreator')(execlib, applib);
   require('./resources/urlgeneratorcreator')(execlib, applib);
   require('./resources/throbbercreator')(execlib, applib);
 
-  require('./elements/webelementcreator')(execlib, applib, templatelib);
-  require('./elements/dataawareelementcreator')(execlib, DataElementMixIn, applib);
+  require('./elements')(execlib, applib, templatelib, htmltemplateslib, applib.mixins);
 
   require('./modifiers/selectorcreator')(execlib, applib);
   require('./modifiers/routecontrollercreator')(execlib, applib);
@@ -25,7 +35,6 @@ function createLib (execlib, applib, linkinglib, templatelib) {
 
   return {
     jQueryCreate: jQueryCreate,
-    DataElementMixIn: DataElementMixIn,
     RouterMixin: routerlib.RouterMixin,
     Router: routerlib.Router,
     RoleRouter: routerlib.RoleRouter
