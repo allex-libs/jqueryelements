@@ -6,16 +6,8 @@ function createClickable (execlib, applib, templatelib, htmltemplateslib) {
     o = templatelib.override,
     m = htmltemplateslib;
 
-  function createClickable (options) {
-    return o(m[options.type || 'button'],
-      'CLASS', options.class || '',
-      'ATTRS', options.attrs || '',
-      'CONTENTS', options.text
-    );
-  }
-
   function ClickableElement (id, options) {
-    options.default_markup = options.default_markup || createClickable(options.clickable || {});
+    //options.default_markup = options.default_markup || createClickable(options.clickable || {});
     WebElement.call(this, id, options);
     this.clicked = new lib.HookCollection();
     this.clickvalue = null;
@@ -32,8 +24,7 @@ function createClickable (execlib, applib, templatelib, htmltemplateslib) {
     this.clicked = null;
     WebElement.prototype.__cleanUp.call(this);
   };
-  ClickableElement.prototype.createjQueryElement = function () {
-    WebElement.prototype.createjQueryElement.call(this);
+  ClickableElement.prototype.initializeOnDomElement = function () {
     this.$element.on('click', this.onElementClicked.bind(this));
   };
   ClickableElement.prototype.onElementClicked = function (jqueryevent) {
@@ -86,7 +77,14 @@ function createClickable (execlib, applib, templatelib, htmltemplateslib) {
   ClickableElement.prototype.isAnchor = function () {
     return this.$element && this.$element.is('a');
   };
-
+  ClickableElement.prototype.createDefaultMarkup = function (htmltemplatename, options) {
+    return o(m[options.type || 'button'],
+      'CLASS', options.class || '',
+      'ATTRS', options.attrs || '',
+      'CONTENTS', options.text
+    );
+  };
+  ClickableElement.prototype.optionsConfigName = 'clickable';
 
   applib.registerElementType('ClickableElement', ClickableElement);
 }

@@ -137,13 +137,19 @@ function createWebElement (execlib, applib, templatelib) {
       findingelem = $(document.body);
       //this.$element = $(finder);
     }
-    findingelem = possiblyReposition(findingelem, this.getConfigVal('target_on_parent'));
+    findingelem = possiblyRelocate(findingelem, this.getConfigVal('target_on_parent'));
     this.$element = findingelem.find(finder);
     return finder;
   };
 
+  var _wrappertargetclass = 'wrappertarget';
   WebElement.prototype.tryToCreateMarkup = function () {
-    var markup = templatelib.process(this.getDefaultMarkup()), appender, appendee;
+    var markup = templatelib.process(this.getDefaultMarkup()),
+      appender,
+      appendee,
+      dmw,
+      dmwelement,
+      dmwtarget;
     if (!markup) {
       return false;
     }
@@ -152,7 +158,23 @@ function createWebElement (execlib, applib, templatelib) {
     } else {
       appender = $(document.body);
     }
-    appender = possiblyReposition(appender, this.getConfigVal('target_on_parent'));
+    dmw = this.getConfigVal('default_markup_wrapper');
+    if (dmw) {
+      dmwelement = $(templatelib.process(dmw));
+      if (dmwelement.hasClass(_wrappertargetclass)) {
+        dmwtarget = dmwelement;
+      }
+      if (!(dmwtarget && dmwtarget[0])) {
+        dmwtarget = dmwelement.find('.wrappertarget');
+      }
+      if (!(dmwtarget && dmwtarget[0])) {
+        console.warn('default_markup_wrapper option was found', dmw, 'but it did not contain an element with class "wrappertarget"');
+      } else {
+        appender.append(dmwtarget);
+        appender = dmwtarget;
+      }
+    }
+    appender = possiblyRelocate(appender, this.getConfigVal('target_on_parent'));
     appendee = $(markup);
     decorateElement(appendee, this.getConfigVal('self_selector')||'#', this.get('id'));
     appender.append(appendee);
@@ -160,6 +182,20 @@ function createWebElement (execlib, applib, templatelib) {
   };
 
   WebElement.prototype.getDefaultMarkup = function () {
+    /*
+    var dmw = this.getConfigVal('default_markup_wrapper');
+    if (dmw) {
+      if (dmw.indexOf('TARGETELEMENT')>=0) {
+        return {
+          template: dmw,
+          replacements: {
+            TARGETELEMENT: this.getConfigVal('default_markup')
+          }
+        };
+      }
+      console.warn('default_markup_wrapper option was found', dmw, 'but it did not contain the TARGETELEMENT keyword');
+    }
+    */
     return this.getConfigVal('default_markup');
   };
 
@@ -366,7 +402,7 @@ function createWebElement (execlib, applib, templatelib) {
     }
   };
 
-  function possiblyReposition (elem, reposition) {
+  function possiblyRelocate (elem, reposition) {
     if (!reposition) {
       return elem;
     }

@@ -8,7 +8,61 @@ lR.register('allex_jqueryelementslib',require('./libindex')(
   lR.get('allex_htmltemplateslib')
 ));
 
-},{"./libindex":10}],2:[function(require,module,exports){
+},{"./libindex":16}],2:[function(require,module,exports){
+function createCanvas (execlib, applib, templatelib, htmltemplateslib) {
+
+  'use strict';
+
+  var lib = execlib.lib,
+    DomElement = applib.getElementType('DomElement'),
+    o = templatelib.override,
+    m = htmltemplateslib;
+
+  function CanvasElement (id, options) {
+    DomElement.call(this, id, options);
+    this.image = null;
+  }
+  lib.inherit(CanvasElement, DomElement);
+  CanvasElement.prototype.__cleanUp = function () {
+    this.image = null;
+    DomElement.prototype.__cleanUp.call(this);
+  };
+  CanvasElement.prototype.set_image = function (img) {
+    var cntxt;
+    if (!(this.$element && this.$element[0])) {
+      return false;
+    }
+    //this.image = img;
+    this.$element.attr('width', img.naturalWidth);
+    this.$element.attr('height', img.naturalHeight);
+    this.$element.css('width', img.width);
+    this.$element.css('height', img.height);
+    cntxt = this.get2DContext();
+    if (!cntxt) {
+      return false;
+    }
+    cntxt.drawImage(img, 0, 0);
+    return true;
+  };
+  CanvasElement.prototype.get2DContext = function () {
+    var ret;
+    if (!this.destroyed) {
+      return null;
+    }
+    if (!(this.$element && this.$element[0])) {
+      return null;
+    }
+    ret = this.$element[0].getContext('2d');
+    return ret;
+  };
+  CanvasElement.prototype.htmlTemplateName = 'canvas';
+  CanvasElement.prototype.optionsConfigName = 'canvas';
+
+  applib.registerElementType('CanvasElement', CanvasElement);
+}
+module.exports = createCanvas;
+
+},{}],3:[function(require,module,exports){
 function createClickable (execlib, applib, templatelib, htmltemplateslib) {
   'use strict';
 
@@ -17,16 +71,8 @@ function createClickable (execlib, applib, templatelib, htmltemplateslib) {
     o = templatelib.override,
     m = htmltemplateslib;
 
-  function createClickable (options) {
-    return o(m[options.type || 'button'],
-      'CLASS', options.class || '',
-      'ATTRS', options.attrs || '',
-      'CONTENTS', options.text
-    );
-  }
-
   function ClickableElement (id, options) {
-    options.default_markup = options.default_markup || createClickable(options.clickable || {});
+    //options.default_markup = options.default_markup || createClickable(options.clickable || {});
     WebElement.call(this, id, options);
     this.clicked = new lib.HookCollection();
     this.clickvalue = null;
@@ -43,8 +89,7 @@ function createClickable (execlib, applib, templatelib, htmltemplateslib) {
     this.clicked = null;
     WebElement.prototype.__cleanUp.call(this);
   };
-  ClickableElement.prototype.createjQueryElement = function () {
-    WebElement.prototype.createjQueryElement.call(this);
+  ClickableElement.prototype.initializeOnDomElement = function () {
     this.$element.on('click', this.onElementClicked.bind(this));
   };
   ClickableElement.prototype.onElementClicked = function (jqueryevent) {
@@ -97,14 +142,21 @@ function createClickable (execlib, applib, templatelib, htmltemplateslib) {
   ClickableElement.prototype.isAnchor = function () {
     return this.$element && this.$element.is('a');
   };
-
+  ClickableElement.prototype.createDefaultMarkup = function (htmltemplatename, options) {
+    return o(m[options.type || 'button'],
+      'CLASS', options.class || '',
+      'ATTRS', options.attrs || '',
+      'CONTENTS', options.text
+    );
+  };
+  ClickableElement.prototype.optionsConfigName = 'clickable';
 
   applib.registerElementType('ClickableElement', ClickableElement);
 }
 
 module.exports = createClickable;
 
-},{}],3:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 function createDataAwareChildElement (execlib, DataElementFollowerMixin, applib) {
   'use strict';
 
@@ -131,7 +183,7 @@ function createDataAwareChildElement (execlib, DataElementFollowerMixin, applib)
 
 module.exports = createDataAwareChildElement;
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 function createDataAwareElement (execlib, DataElementMixIn, applib) {
   'use strict';
 
@@ -170,7 +222,125 @@ function createDataAwareElement (execlib, DataElementMixIn, applib) {
 
 module.exports = createDataAwareElement;
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
+function createDomElement (execlib, applib, templatelib, htmltemplateslib) {
+
+  'use strict';
+
+  var lib = execlib.lib,
+    WebElement = applib.getElementType('WebElement'),
+    o = templatelib.override,
+    m = htmltemplateslib;
+
+  function DomElement (id, options) {
+    options.default_markup = options.default_markup || this.createDefaultMarkup(
+      this.htmlTemplateName,
+      this.configOptionsForDefaultMarkup(options)
+    );
+    WebElement.call(this, id, options);
+  }
+  lib.inherit(DomElement, WebElement);
+  DomElement.prototype.configOptionsForDefaultMarkup = function (options) {
+    var useroptions = options && lib.isVal(options) ? options[this.optionsConfigName] || {} : {};
+    return lib.extend({}, this.defaultOptionsForMarkup(), useroptions);
+  };
+  DomElement.prototype.defaultOptionsForMarkup = function () {
+    return {};
+  };
+  DomElement.prototype.initializeOnDomElement = function () {
+  };
+  DomElement.prototype.createDefaultMarkup = function (htmltemplatename, options) {
+    return o( m[htmltemplatename],
+      'CLASS', options.class || '',
+      'ATTRS', options.attrs || '',
+      'CONTENTS', options.text || ''
+    );
+  };
+
+  DomElement.prototype.postInitializationMethodNames = WebElement.prototype.postInitializationMethodNames.concat('initializeOnDomElement');
+
+  applib.registerElementType('DomElement', DomElement);
+}
+module.exports = createDomElement;
+
+},{}],7:[function(require,module,exports){
+function createFileInputElement (execlib, applib, templateslitelib, htmltemplateslib, jobs) {
+  'use strict';
+
+  var DomElement = applib.getElementType('DomElement'),
+    lib = execlib.lib,
+    q = lib.q,
+    qlib = lib.qlib,
+    o = templateslitelib.override,
+    p = templateslitelib.process,
+    m = htmltemplateslib;
+
+  console.log(htmltemplateslib);
+  function FileInputElement (id, options) {
+    //options.default_markup = options.default_markup || createDefaultMarkup(options);
+    DomElement.call(this, id, options);
+    this.gotFiles = new lib.HookCollection();
+    this.$fileinputelement = null;
+  }
+  lib.inherit(FileInputElement, DomElement);
+  FileInputElement.prototype.__cleanUp = function () {
+    if (this.$fileinputelement) {
+      this.$fileinputelement.onchange = null;
+    }
+    this.$fileinputelement = null;
+    if (this.gotFiles) {
+      this.gotFiles.destroy();
+    }
+    this.gotFiles = null;
+    DomElement.prototype.__cleanUp.call(this);
+  };
+  FileInputElement.prototype.initializeOnDomElement = function () {
+    this.$fileinputelement = this.$element.find(':input')[0];
+    if (this.$fileinputelement) {
+      this.$fileinputelement.onchange = this.onFileChanged.bind(this);
+    }
+  };
+  FileInputElement.prototype.onFileChanged = function (evnt) {
+    var files;
+    evnt.preventDefault();
+    evnt.stopPropagation();
+    if (!this.$fileinputelement) {
+      return;
+    }
+    files = Array.prototype.slice.call(this.$fileinputelement.files);
+    q.all(files.map(this.readFile.bind(this))).then(
+      this.gotFiles.fire.bind(this.gotFiles),
+      console.error.bind(console, 'readFile Error')
+    );
+  };
+  FileInputElement.prototype.readFile = function (file) {
+    return (new jobs.ReadFileJob(this, file)).go();
+  };
+  FileInputElement.prototype.readImage = function (result, file) {
+    var reader = new FileReader(), _r = result;
+    reader.readAsDataURL(file);
+  };
+  //FileInputElement.prototype.optionsConfigName = 'fileinput';
+  FileInputElement.prototype.optionsConfigName = 'fileinput';
+  FileInputElement.prototype.createDefaultMarkup = function (htmltemplatename, options) {
+    return o(m.div,
+      'CONTENTS', 
+        o( m.label,
+        'CONTENTS', [o(
+          m.fileinput,
+          'ATTRS', 'style="display:none;"' + (options.attrs ? ' '+options.attrs : ''),
+          'NAME', options.inputname || 'file'
+        ), options.label || 'File'
+        ]
+      )
+    );
+  };
+
+  applib.registerElementType('FileInputElement', FileInputElement);
+}
+module.exports = createFileInputElement;
+
+},{}],8:[function(require,module,exports){
 function createFromDataCreator (execlib, applib) {
   'use strict';
 
@@ -252,20 +422,175 @@ function createFromDataCreator (execlib, applib) {
 
 module.exports = createFromDataCreator;
 
-},{}],6:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
+function createImg (execlib, applib, templatelib, htmltemplateslib) {
+
+  'use strict';
+
+  var lib = execlib.lib,
+    DomElement = applib.getElementType('DomElement'),
+    o = templatelib.override,
+    m = htmltemplateslib;
+
+  function ImgElement (id, options) {
+    DomElement.call(this, id, options);
+    this.src = null;
+    this.imgLoaded = new lib.HookCollection();
+    this.naturalHeight = null;
+    this.naturalWidth = null;
+    this.naturalSize = null;
+  }
+  lib.inherit(ImgElement, DomElement);
+  ImgElement.prototype.__cleanUp = function () {
+    this.naturalSize = null;
+    this.naturalWidth = null;
+    this.naturalHeight = null;
+    if (this.imgLoaded) {
+      this.imgLoaded.destroy();
+    }
+    this.imgLoaded = null;
+    this.src = null;
+    DomElement.prototype.__cleanUp.call(this);
+  };
+  ImgElement.prototype.set_src = function (src) {
+    if (!this.destroyed) {
+      return false;
+    }
+    this.src = src;
+    if (this.$element[0]) {
+      this.$element[0].src = src;
+    }
+    return true;
+  };
+  ImgElement.prototype.initializeOnDomElement = function () {
+    this.$element.on('load', this.onLoaded.bind(this));
+    if (this.getConfigVal('img.src')) {
+      this.set('src', this.getConfigVal('img.src'));
+    }
+  };
+  ImgElement.prototype.onLoaded = function (evnt_ignored) {
+    var el;
+    if (!this.destroyed) {
+      return;
+    }
+    el = this.$element[0];
+    this.imgLoaded.fire(el);
+    this.set('naturalHeight', el.naturalHeight);
+    this.set('naturalWidth', el.naturalWidth);
+    this.set('naturalSize', {w: el.naturalWidth, h: el.naturalHeight});
+  };
+  ImgElement.prototype.htmlTemplateName = 'img';
+  ImgElement.prototype.optionsConfigName = 'img';
+
+  applib.registerElementType('ImgElement', ImgElement);
+}
+module.exports = createImg;
+
+},{}],10:[function(require,module,exports){
 function createElements (execlib, applib, templatelib, htmltemplateslib, mixins) {
   'use strict';
+
+  var jobs = require('./jobs')(execlib.lib);
 
   require('./webelementcreator')(execlib, applib, templatelib);
   require('./dataawareelementcreator')(execlib, mixins.DataElementMixin, applib);
   require('./dataawarechildcreator')(execlib, mixins.DataElementFollowerMixin, applib);
-  require('./clickablecreator')(execlib, applib, templatelib, htmltemplateslib);
   require('./fromdatacreatorcreator')(execlib, applib);
+
+  require('./clickablecreator')(execlib, applib, templatelib, htmltemplateslib);
+  require('./domelementcreator')(execlib, applib, templatelib, htmltemplateslib);
+  require('./canvascreator')(execlib, applib, templatelib, htmltemplateslib);
+  require('./imgcreator')(execlib, applib, templatelib, htmltemplateslib);
+  require('./fileinputcreator')(execlib, applib, templatelib, htmltemplateslib, jobs);
 }
 
 module.exports = createElements;
 
-},{"./clickablecreator":2,"./dataawarechildcreator":3,"./dataawareelementcreator":4,"./fromdatacreatorcreator":5,"./webelementcreator":7}],7:[function(require,module,exports){
+},{"./canvascreator":2,"./clickablecreator":3,"./dataawarechildcreator":4,"./dataawareelementcreator":5,"./domelementcreator":6,"./fileinputcreator":7,"./fromdatacreatorcreator":8,"./imgcreator":9,"./jobs":11,"./webelementcreator":13}],11:[function(require,module,exports){
+function createJobs (lib) {
+  'use strict';
+
+  var ret = {};
+
+  require('./readfilecreator')(lib, ret);
+
+  return ret;
+}
+module.exports = createJobs;
+
+},{"./readfilecreator":12}],12:[function(require,module,exports){
+function createReadFileJob (lib, mylib) {
+  'use strict';
+
+  var JobOnDestroyable = lib.qlib.JobOnDestroyable;
+
+  function ReadFileJob (elem, file, defer) {
+    JobOnDestroyable.call(this, elem, defer);
+    this.file = file;
+    this.reader = new FileReader();
+    this.reader.onload = this.onLoaded.bind(this);
+    this.reader.onerror = this.reject.bind(this);
+    this.reader.onprogress = this.onProgress.bind(this);
+  }
+  lib.inherit(ReadFileJob, JobOnDestroyable);
+  ReadFileJob.prototype.destroy = function () {
+    if (this.reader) {
+      this.reader.onload = null;
+      this.reader.onerror = null;
+    }
+    this.reader = null;
+    this.file = null;
+    JobOnDestroyable.prototype.destroy.call(this);
+  };
+  ReadFileJob.prototype.go = function () {
+    var ok = this.okToGo();
+    if (!ok.ok) {
+      return ok.val;
+    }
+    if (!this.file) {
+      this.reject(new lib.Error('NO_FILE_TO_READ', 'There is no file to read'));
+      return ok.val;
+    }
+    if (this.file.type.match('image.*')) {
+      this.reader.readAsDataURL(this.file);
+      return ok.val;
+    }
+    this.reader.readAsText(this.file, 'UTF-8');
+    return ok.val;
+  };
+  ReadFileJob.prototype.onLoaded = function (evnt) {
+    if (!this.okToProceed()) {
+      return;
+    }
+    if (!(evnt && evnt.target && evnt.target.result)) {
+      this.resolve({
+        name: this.file.name,
+        lastModified: this.file.lastModified,
+        size: this.file.size,
+        type: this.file.type
+      });
+      return;
+    }
+    this.resolve({
+      name: this.file.name,
+      lastModified: this.file.lastModified,
+      size: this.file.size,
+      type: this.file.type,
+      contents: evnt.target.result
+    });
+  };
+  ReadFileJob.prototype.onProgress = function (evnt) {
+    if (!(evnt && evnt.lengthComputable)) {
+      return;
+    }
+    this.notify(Math.round(evnt.loaded/evnt.total * 10000)/100);
+  };
+
+  mylib.ReadFileJob = ReadFileJob;
+}
+module.exports = createReadFileJob;
+
+},{}],13:[function(require,module,exports){
 function createWebElement (execlib, applib, templatelib) {
   'use strict';
 
@@ -405,13 +730,19 @@ function createWebElement (execlib, applib, templatelib) {
       findingelem = $(document.body);
       //this.$element = $(finder);
     }
-    findingelem = possiblyReposition(findingelem, this.getConfigVal('target_on_parent'));
+    findingelem = possiblyRelocate(findingelem, this.getConfigVal('target_on_parent'));
     this.$element = findingelem.find(finder);
     return finder;
   };
 
+  var _wrappertargetclass = 'wrappertarget';
   WebElement.prototype.tryToCreateMarkup = function () {
-    var markup = templatelib.process(this.getDefaultMarkup()), appender, appendee;
+    var markup = templatelib.process(this.getDefaultMarkup()),
+      appender,
+      appendee,
+      dmw,
+      dmwelement,
+      dmwtarget;
     if (!markup) {
       return false;
     }
@@ -420,7 +751,23 @@ function createWebElement (execlib, applib, templatelib) {
     } else {
       appender = $(document.body);
     }
-    appender = possiblyReposition(appender, this.getConfigVal('target_on_parent'));
+    dmw = this.getConfigVal('default_markup_wrapper');
+    if (dmw) {
+      dmwelement = $(templatelib.process(dmw));
+      if (dmwelement.hasClass(_wrappertargetclass)) {
+        dmwtarget = dmwelement;
+      }
+      if (!(dmwtarget && dmwtarget[0])) {
+        dmwtarget = dmwelement.find('.wrappertarget');
+      }
+      if (!(dmwtarget && dmwtarget[0])) {
+        console.warn('default_markup_wrapper option was found', dmw, 'but it did not contain an element with class "wrappertarget"');
+      } else {
+        appender.append(dmwtarget);
+        appender = dmwtarget;
+      }
+    }
+    appender = possiblyRelocate(appender, this.getConfigVal('target_on_parent'));
     appendee = $(markup);
     decorateElement(appendee, this.getConfigVal('self_selector')||'#', this.get('id'));
     appender.append(appendee);
@@ -428,6 +775,20 @@ function createWebElement (execlib, applib, templatelib) {
   };
 
   WebElement.prototype.getDefaultMarkup = function () {
+    /*
+    var dmw = this.getConfigVal('default_markup_wrapper');
+    if (dmw) {
+      if (dmw.indexOf('TARGETELEMENT')>=0) {
+        return {
+          template: dmw,
+          replacements: {
+            TARGETELEMENT: this.getConfigVal('default_markup')
+          }
+        };
+      }
+      console.warn('default_markup_wrapper option was found', dmw, 'but it did not contain the TARGETELEMENT keyword');
+    }
+    */
     return this.getConfigVal('default_markup');
   };
 
@@ -634,7 +995,7 @@ function createWebElement (execlib, applib, templatelib) {
     }
   };
 
-  function possiblyReposition (elem, reposition) {
+  function possiblyRelocate (elem, reposition) {
     if (!reposition) {
       return elem;
     }
@@ -646,7 +1007,7 @@ function createWebElement (execlib, applib, templatelib) {
 
 module.exports = createWebElement;
 
-},{}],8:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 function createHandlers (execlib, applib, linkinglib) {
   'use strict';
 
@@ -839,7 +1200,7 @@ function createHandlers (execlib, applib, linkinglib) {
 
 module.exports = createHandlers;
 
-},{}],9:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 function createJQueryCreate (execlib, templatelib) {
   'use stict';
 
@@ -861,7 +1222,7 @@ function createJQueryCreate (execlib, templatelib) {
 
 module.exports = createJQueryCreate;
 
-},{}],10:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 /**
  * A library that uses {@link allex://allex_applib} and jQuery
  * to build the basic Web App functionality.
@@ -907,7 +1268,7 @@ function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib) 
 
 module.exports = createLib;
 
-},{"./elements":6,"./handlers":8,"./jquerycreatecreator":9,"./misc/router":11,"./modifiers/routecontrollercreator":12,"./modifiers/selectorcreator":13,"./preprocessors/dataviewcreator":14,"./preprocessors/keyboardcreator":15,"./preprocessors/logoutdeactivatorcreator":16,"./preprocessors/pipelinecreator":17,"./preprocessors/roleroutercreator":18,"./preprocessors/tabviewcreator":19,"./resources/fontloadercreator":20,"./resources/throbbercreator":21,"./resources/urlgeneratorcreator":22}],11:[function(require,module,exports){
+},{"./elements":10,"./handlers":14,"./jquerycreatecreator":15,"./misc/router":17,"./modifiers/routecontrollercreator":18,"./modifiers/selectorcreator":19,"./preprocessors/dataviewcreator":20,"./preprocessors/keyboardcreator":21,"./preprocessors/logoutdeactivatorcreator":22,"./preprocessors/pipelinecreator":23,"./preprocessors/roleroutercreator":24,"./preprocessors/tabviewcreator":25,"./resources/fontloadercreator":26,"./resources/throbbercreator":27,"./resources/urlgeneratorcreator":28}],17:[function(require,module,exports){
 function createRouterLib (allex) {
   'use strict';
 
@@ -1150,7 +1511,7 @@ function createRouterLib (allex) {
 
 module.exports = createRouterLib;
 
-},{}],12:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 function createRouteController (allex, applib) {
   'use strict';
 
@@ -1178,7 +1539,7 @@ function createRouteController (allex, applib) {
 
 module.exports = createRouteController;
 
-},{}],13:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 function createSelectorModifier (allex, applib) {
   'use strict';
 
@@ -1238,7 +1599,7 @@ function createSelectorModifier (allex, applib) {
 
 module.exports = createSelectorModifier;
 
-},{}],14:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 function createDataViewProcessor (allex, applib) {
   'use strict';
 
@@ -1323,7 +1684,7 @@ function createDataViewProcessor (allex, applib) {
 
 module.exports = createDataViewProcessor;
 
-},{}],15:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 function createKeyboardProcessor (allex, applib) {
   'use strict';
 
@@ -1379,7 +1740,7 @@ function createKeyboardProcessor (allex, applib) {
 
 module.exports = createKeyboardProcessor;
 
-},{}],16:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 function createLogoutDeactivatorProcessor (allex, applib) {
   'use strict';
   var lib = allex.lib,
@@ -1466,7 +1827,7 @@ function createLogoutDeactivatorProcessor (allex, applib) {
 
 module.exports = createLogoutDeactivatorProcessor;
 
-},{}],17:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 function createPipelineProcessor (allex, applib) {
   'use strict';
   var lib = allex.lib,
@@ -1830,7 +2191,7 @@ function createPipelineProcessor (allex, applib) {
 module.exports = createPipelineProcessor;
 
 
-},{}],18:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 function createRoleRouterPreprocessor (allex, routerlib, applib) {
   'use strict';
   var lib = allex.lib,
@@ -1995,7 +2356,7 @@ function createRoleRouterPreprocessor (allex, routerlib, applib) {
 
 module.exports = createRoleRouterPreprocessor;
 
-},{}],19:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 function createTabViewProcessor (allex, routerlib, applib, templatelib) {
   'use strict';
   var lib = allex.lib,
@@ -2155,7 +2516,7 @@ function createTabViewProcessor (allex, routerlib, applib, templatelib) {
 
 module.exports = createTabViewProcessor;
 
-},{}],20:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 function createFontLoader(allex, applib, $) {
   'use strict';
 
@@ -2213,7 +2574,7 @@ function createFontLoader(allex, applib, $) {
 
 module.exports = createFontLoader;
 
-},{}],21:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 function createThrobberResource (allex, applib) {
   'use strict';
 
@@ -2297,7 +2658,7 @@ function createThrobberResource (allex, applib) {
 
 module.exports = createThrobberResource;
 
-},{}],22:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 function createURLGeneratorResource (execlib, applib) {
   var lib = execlib.lib,
   BasicResourceLoader = applib.BasicResourceLoader,
