@@ -8,11 +8,14 @@ function createElements (execlib, applib, templatelib, htmltemplateslib, mixins)
   require('./dataawarechildcreator')(execlib, mixins.DataElementFollowerMixin, applib);
   require('./fromdatacreatorcreator')(execlib, applib);
 
-  require('./clickablecreator')(execlib, applib, templatelib, htmltemplateslib);
   require('./domelementcreator')(execlib, applib, templatelib, htmltemplateslib);
+  require('./divcreator')(execlib, applib, templatelib, htmltemplateslib);
   require('./canvascreator')(execlib, applib, templatelib, htmltemplateslib);
   require('./imgcreator')(execlib, applib, templatelib, htmltemplateslib);
   require('./fileinputcreator')(execlib, applib, templatelib, htmltemplateslib, jobs);
+  require('./clickablecreator')(execlib, applib, templatelib, htmltemplateslib);
+
+  require('./splashcreator')(execlib, applib, templatelib, htmltemplateslib);
 }
 
 module.exports = createElements;

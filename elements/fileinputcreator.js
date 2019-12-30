@@ -9,7 +9,6 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
     p = templateslitelib.process,
     m = htmltemplateslib;
 
-  console.log(htmltemplateslib);
   function FileInputElement (id, options) {
     //options.default_markup = options.default_markup || createDefaultMarkup(options);
     DomElement.call(this, id, options);
@@ -32,6 +31,9 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
     this.$fileinputelement = this.$element.find(':input')[0];
     if (this.$fileinputelement) {
       this.$fileinputelement.onchange = this.onFileChanged.bind(this);
+      if (this.getConfigVal('cursor')) {
+        this.$element.find('label').css('cursor', this.getConfigVal('cursor'));
+      }
     }
   };
   FileInputElement.prototype.onFileChanged = function (evnt) {
@@ -46,6 +48,12 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
       this.gotFiles.fire.bind(this.gotFiles),
       console.error.bind(console, 'readFile Error')
     );
+  };
+  FileInputElement.prototype.resetInput = function () {
+    if (!this.destroyed) {
+      return;
+    }
+    this.$fileinputelement.value = '';
   };
   FileInputElement.prototype.readFile = function (file) {
     return (new jobs.ReadFileJob(this, file)).go();

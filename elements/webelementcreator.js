@@ -130,12 +130,17 @@ function createWebElement (execlib, applib, templatelib) {
     var selector = this.getConfigVal('self_selector')||'#',
       finder = finderFrom(selector, this.get('id')),
       findingelem;
-    if (this.__parent && this.__parent.$element) {
-      findingelem = this.__parent.$element;
-      //this.$element = this.__parent.$element.find(finder);
-    } else {
-      findingelem = $(document.body);
-      //this.$element = $(finder);
+    if (this.getConfigVal('force_dom_parent')) {
+      findingelem = $(this.getConfigVal('force_dom_parent'));
+    }
+    if (!(findingelem && findingelem.length)) {
+      if (this.__parent && this.__parent.$element) {
+        findingelem = this.__parent.$element;
+        //this.$element = this.__parent.$element.find(finder);
+      } else {
+        findingelem = $(document.body);
+        //this.$element = $(finder);
+      }
     }
     findingelem = possiblyRelocate(findingelem, this.getConfigVal('target_on_parent'));
     this.$element = findingelem.find(finder);
@@ -153,11 +158,17 @@ function createWebElement (execlib, applib, templatelib) {
     if (!markup) {
       return false;
     }
-    if (this.__parent && this.__parent.$element) {
-      appender = this.__parent.$element;
-    } else {
-      appender = $(document.body);
+    if (this.getConfigVal('force_dom_parent')) {
+      appender = $(this.getConfigVal('force_dom_parent'));
     }
+    if (!(appender && appender.length)) {
+      if (this.__parent && this.__parent.$element) {
+        appender = this.__parent.$element;
+      } else {
+        appender = $(document.body);
+      }
+    }
+    appender = possiblyRelocate(appender, this.getConfigVal('target_on_parent'));
     dmw = this.getConfigVal('default_markup_wrapper');
     if (dmw) {
       dmwelement = $(templatelib.process(dmw));
@@ -170,11 +181,10 @@ function createWebElement (execlib, applib, templatelib) {
       if (!(dmwtarget && dmwtarget[0])) {
         console.warn('default_markup_wrapper option was found', dmw, 'but it did not contain an element with class "wrappertarget"');
       } else {
-        appender.append(dmwtarget);
+        appender.append(dmwelement);
         appender = dmwtarget;
       }
     }
-    appender = possiblyRelocate(appender, this.getConfigVal('target_on_parent'));
     appendee = $(markup);
     decorateElement(appendee, this.getConfigVal('self_selector')||'#', this.get('id'));
     appender.append(appendee);
@@ -205,6 +215,66 @@ function createWebElement (execlib, applib, templatelib) {
     }
     return BasicElement.prototype.set_actual.call(this, val);
   };
+
+  //text start
+  WebElement.prototype.set_text = function (val) {
+    if (this.$element) {
+      this.$element.text(val);
+    }
+    return true;
+  };
+  WebElement.prototype.get_text = function () {
+    if (this.$element) {
+      return this.$element.text();
+    }
+    return null;
+  };
+  //text end
+  
+  //html start
+  WebElement.prototype.set_html = function (val) {
+    if (this.$element) {
+      this.$element.html(val);
+    }
+    return true;
+  };
+  WebElement.prototype.get_html = function () {
+    if (this.$element) {
+      return this.$element.html();
+    }
+    return null;
+  };
+  //text end
+  
+  //enabled start
+  WebElement.prototype.set_enabled = function (val) {
+    if (this.$element) {
+      this.$element.prop('disabled', !val);
+    }
+    return true;
+  };
+  WebElement.prototype.get_enabled = function () {
+    if (this.$element) {
+      return !this.$element.prop('disabled');
+    }
+    return null;
+  };
+  //enabled end
+
+  //checked start
+  WebElement.prototype.set_checked = function (val) {
+    if (this.$element) {
+      this.$element.prop('checked', val);
+    }
+    return true;
+  };
+  WebElement.prototype.get_checked = function () {
+    if (this.$element) {
+      return this.$element.prop('checked');
+    }
+    return null;
+  };
+  //checked end
 
   WebElement.prototype.onUnloaded = function () {
     BasicElement.prototype.onUnloaded.call(this);
@@ -262,9 +332,13 @@ function createWebElement (execlib, applib, templatelib) {
         this.$element[name].apply(this.$element, show_jq_function.slice(1));
       }
     }else{
-      this.$element.show();
+      this.showElement();
     }
     this.fireHook ('onShown', [this]);
+  };
+
+  WebElement.prototype.showElement = function () {
+    this.$element.show(this.actual);
   };
 
   WebElement.prototype.hide = function () {
@@ -287,10 +361,14 @@ function createWebElement (execlib, applib, templatelib) {
         this.$element[name].apply(this.$element, hide_jq_function.slice(1));
       }
     }else{
-      this.$element.hide();
+      this.hideElement();
     }
 
     this.fireHook('onHidden');
+  };
+
+  WebElement.prototype.hideElement = function () {
+    this.$element.hide();
   };
 
   function splitAtDot (str) {

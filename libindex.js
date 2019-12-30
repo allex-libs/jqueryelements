@@ -13,7 +13,8 @@ function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib) 
   'use strict';
 
   var routerlib = require('./misc/router')(execlib),
-    jQueryCreate = require('./jquerycreatecreator')(execlib, templatelib);
+    jQueryCreate = require('./jquerycreatecreator')(execlib, templatelib),
+    formRenderingMixins = require('./formrenderingmixins')(execlib);
 
   require('./handlers')(execlib, applib, linkinglib);
 
@@ -37,7 +38,10 @@ function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib) 
     jQueryCreate: jQueryCreate,
     RouterMixin: routerlib.RouterMixin,
     Router: routerlib.Router,
-    RoleRouter: routerlib.RoleRouter
+    RoleRouter: routerlib.RoleRouter,
+    mixins: {
+      form: formRenderingMixins
+    }
   };
 }
 

@@ -28,6 +28,7 @@ function createDomElement (execlib, applib, templatelib, htmltemplateslib) {
     return o( m[htmltemplatename],
       'CLASS', options.class || '',
       'ATTRS', options.attrs || '',
+      'TARGET', options.target || '#',
       'CONTENTS', options.text || ''
     );
   };
