@@ -8,7 +8,7 @@ lR.register('allex_jqueryelementslib',require('./libindex')(
   lR.get('allex_htmltemplateslib')
 ));
 
-},{"./libindex":21}],2:[function(require,module,exports){
+},{"./libindex":28}],2:[function(require,module,exports){
 function createCanvas (execlib, applib, templatelib, htmltemplateslib) {
 
   'use strict';
@@ -93,7 +93,7 @@ function createClickable (execlib, applib, templatelib, htmltemplateslib) {
     this.$element.on('click', this.onElementClicked.bind(this));
   };
   ClickableElement.prototype.onElementClicked = function (jqueryevent) {
-    if (!this.get('enabled')) {
+    if (!this.get('enabled') && !this.getConfigVal('ignore_enabled')) {
       return;
     }
     this.clicked.fire.call(this.clicked, [jqueryevent, this.clickvalue]);
@@ -683,6 +683,7 @@ function createWebElement (execlib, applib, templatelib) {
     this._addHook ('onShown');
     this._addHook ('onHidden');
     this._helpers = null;
+    this._htmlcontent;
 
     var helperObj = this.getConfigVal ('helperObjects');
     for (var i in helperObj) {
@@ -692,6 +693,7 @@ function createWebElement (execlib, applib, templatelib) {
   lib.inherit (WebElement, BasicElement);
 
   WebElement.prototype.__cleanUp = function () {
+    this._htmlcontent = null;
     if (this._helpers) {
       lib.container.destroyAll(this._helpers);
       this._helpers.destroy();
@@ -700,6 +702,9 @@ function createWebElement (execlib, applib, templatelib) {
     if (this.$element) {
       if (this.elementCreatedByMe) {
         this.$element.remove();
+      } else {
+        this.$element.remoteAttr('allexid');
+        this.$element.remoteAttr('allextype');
       }
     }
     this.$element = null;
@@ -781,21 +786,30 @@ function createWebElement (execlib, applib, templatelib) {
     var finder = this.tryToCreatejQueryElement();
     if (!(this.$element && this.$element.length)) {
       if (!this.tryToCreateMarkup()) {
+        console.error('on', this.findingElement());
         throw new Error('Unable to find DOM element '+this.get('id')+' using jQuery selector '+selector+' ('+finder+')');
       }
       finder = this.tryToCreatejQueryElement();
       if (!(this.$element && this.$element.length)) {
+        console.error('on', this.findingElement());
         throw new Error('Unable to find DOM element '+this.get('id')+' using jQuery selector '+selector+' ('+finder+') even after creation with default_markup '+this.getDefaultMarkup());
       }
     }
     this.elementCreatedByMe = true;
     this.$element.attr('allexid', this.get('id'));
+    this.$element.attr('allextype', this.constructor.name);
   };
 
   WebElement.prototype.tryToCreatejQueryElement = function () {
     var selector = this.getConfigVal('self_selector')||'#',
       finder = finderFrom(selector, this.get('id')),
-      findingelem;
+      findingelem = this.findingElement();
+    this.$element = findingelem.find(finder);
+    return finder;
+  };
+
+  WebElement.prototype.findingElement = function () {
+    var findingelem;
     if (this.getConfigVal('force_dom_parent')) {
       findingelem = $(this.getConfigVal('force_dom_parent'));
     }
@@ -809,8 +823,10 @@ function createWebElement (execlib, applib, templatelib) {
       }
     }
     findingelem = possiblyRelocate(findingelem, this.getConfigVal('target_on_parent'));
-    this.$element = findingelem.find(finder);
-    return finder;
+    if (!(findingelem && findingelem.length)) {
+      throw new Error(this.constructor.name+' '+this.get('id')+' misconfigured, so the parent DOM element cannot be located, check the "self_selector" or "force_dom_parent" or "target_on_parent"');
+    }
+    return findingelem;
   };
 
   var _wrappertargetclass = 'wrappertarget';
@@ -899,19 +915,48 @@ function createWebElement (execlib, applib, templatelib) {
   
   //html start
   WebElement.prototype.set_html = function (val) {
-    if (this.$element) {
-      this.$element.html(val);
+    if (!this.$element) {
+      return false;
     }
+    this.$element.html(val);
+    this._htmlcontent = val;
     return true;
   };
   WebElement.prototype.get_html = function () {
-    if (this.$element) {
-      return this.$element.html();
-    }
+    return this._htmlcontent;
     return null;
   };
   //text end
   
+  //value start
+  WebElement.prototype.set_value = function (val) {
+    if (this.$element) {
+      this.$element.val(val);
+    }
+    return true;
+  };
+  WebElement.prototype.get_value = function () {
+    if (this.$element) {
+      return this.$element.val();
+    }
+    return null;
+  };
+  //value end
+  
+  //required start
+  WebElement.prototype.get_required = function () {
+    var req;
+    if (this.$element) {
+      req = this.getConfigVal('required');
+      if (lib.isVal(req)) {
+        return req;
+      }
+      return this.$element.attr('required');
+    }
+    return null;
+  };
+  //required end
+
   //enabled start
   WebElement.prototype.set_enabled = function (val) {
     if (this.$element) {
@@ -1159,6 +1204,484 @@ function createWebElement (execlib, applib, templatelib) {
 module.exports = createWebElement;
 
 },{}],16:[function(require,module,exports){
+function createBitMaskCheckboxesMixin (lib) {
+  'use strict';
+
+  function BitMaskCheckboxesMixin (options) {
+    if (!options) {
+      throw new Error ('BitMaskCheckboxesMixin needs the options hash in its ctor');
+    }
+    if (!options.hashfield) {
+      throw new Error ('BitMaskCheckboxesMixin needs the "hashfield" name in its ctor options');
+    }
+    if (!lib.isArray(options.values)) {
+      throw new Error ('BitMaskCheckboxesMixin needs the "values" array of finder Strings in its ctor options');
+    }
+    this.bitmaskcheckboxesvalue = null;
+    this.checkboxchangeder = checkBoxChanged.bind(this);
+  }
+  BitMaskCheckboxesMixin.prototype.destroy = function () {
+    if (this.checkboxchangeder) {
+      if (this.$element) {
+        this.$element.find(':checkbox').off('changed', this.checkboxchangeder);
+      }
+    }
+    this.checkboxchangeder = null;
+    this.bitmaskcheckboxesvalue = null;
+  };
+  BitMaskCheckboxesMixin.prototype.hashToText = function (data) {
+    if (!this.$element) {
+      return null;
+    }
+    if (lib.isFunction(this.setDataReceived)) {
+      this.setDataReceived();
+    }
+    this.set('value', lib.isVal(data) ? data[this.getConfigVal('hashfield')] : null);
+    return null;
+  };
+  BitMaskCheckboxesMixin.prototype.set_value = function (val) {
+    setValueToCheckboxes.call(this, val);
+    this.bitmaskcheckboxesvalue = val;
+    return true;
+  };
+  BitMaskCheckboxesMixin.prototype.get_value = function () {
+    return this.bitmaskcheckboxesvalue; //getValueFromChecboxes.call(this);
+  };
+  BitMaskCheckboxesMixin.prototype.get_valid = function () {
+    return lib.isNumber(this.get_value());
+  };
+  BitMaskCheckboxesMixin.prototype.bitMaskCheckboxesMaybeStartListening = function () {
+    if (this.$element) {
+      this.$element.find(':checkbox').prop('checked', false);
+    }
+    if (!this.getConfigVal('interactive')) {
+      this.$element.find(':checkbox').prop('disabled', true);
+      return;
+    }
+    this.$element.find(':checkbox').on('click', this.checkboxchangeder);
+  };
+
+  BitMaskCheckboxesMixin.addMethods = function (klass) {
+    lib.inheritMethods(klass, BitMaskCheckboxesMixin
+      ,'hashToText'
+      ,'bitMaskCheckboxesMaybeStartListening'
+    );
+    klass.prototype.postInitializationMethodNames = 
+      klass.prototype.postInitializationMethodNames.concat(['bitMaskCheckboxesMaybeStartListening']);
+  };
+
+  //static method - "this" matters
+  function checkBoxChanged () {
+    this.set('value', getValueFromChecboxes.call(this));
+  }
+
+  //static method - "this" matters
+  function setValueToCheckboxes (val) {
+    var values = this.getConfigVal('values');
+    if (lib.isArray(values)) {
+      values.reduce(bitMaskCheckboxesCheckboxSetter.bind(this, val), 1);
+      val = null;
+    }
+  }
+  //static method - "this" matters
+  function bitMaskCheckboxesCheckboxSetter (val, res, finder) {
+    var subelement = this.$element.find(finder);
+    if (!(subelement && subelement.length===1)) {
+      return res;
+    }
+    subelement.attr('name', this.getConfigVal('hashfield'));
+    subelement.val(res);
+    subelement.prop('checked', res&val); //bitwise AND
+    res *= 2;
+    return res;
+  };
+
+  //static method - "this" matters
+  function getValueFromChecboxes () {
+    var values, reduceobj;
+    if (!this.$element) {
+      return null;
+    }
+    values = this.getConfigVal('values');
+    reduceobj = {
+      val: 0,
+      power: 1
+    };
+    if (lib.isArray(values)) {
+      values.reduce(bitMaskCheckboxesCheckboxGetter.bind(this), reduceobj);
+      return reduceobj.val;
+    }
+    return null;
+  }
+
+  //static method - "this" matters
+  function bitMaskCheckboxesCheckboxGetter (res, finder) {
+    var subelement = this.$element.find(finder);
+    if (!(subelement && subelement.length===1)) {
+      res.power*=2;
+      return res;
+    }
+    if (subelement.prop('checked')) {
+      res.val += res.power;
+    }
+    res.power*=2;
+    return res;
+  }
+
+  return BitMaskCheckboxesMixin;
+}
+module.exports = createBitMaskCheckboxesMixin;
+
+},{}],17:[function(require,module,exports){
+function createDataHolder (lib) {
+  'use strict';
+
+  function DataHolder () {
+    this.valid = null;
+    this.pristine = true;
+    this.dataHolderUnderReset = false;
+  }
+  DataHolder.prototype.destroy = function () {
+    this.dataHolderUnderReset = null;
+    this.pristine = null;
+    this.valid = null;
+  };
+  DataHolder.prototype.set_pristine = function (val) {
+    throw new Error(this.constructor.name+' implements the DataHolder mixin, and cannot set the "pristine" property directly - but only through resetData');
+  };
+  DataHolder.prototype.resetData = function () {
+    var oldpristine = this.pristine;
+    this.pristine = true;
+    this.dataHolderUnderReset = true;
+    if (this.__children) {
+      this.__children.traverse(resetdataer);
+    }
+    this.set('data', this.nullValue);
+    this.set('valid', null);
+    try {
+      this.set('value', null);
+    } catch (e) {
+    }
+    if (!oldpristine) {
+      this.changed.fire('pristine', true);
+    }
+    this.dataHolderUnderReset = false;
+  };
+  DataHolder.prototype.setDataReceived = function () {
+    if (this.dataHolderUnderReset===false) {
+      this.pristine = false;
+    }
+  };
+  DataHolder.prototype.nullValue = null;
+
+  function resetdataer (chld) {
+    if (!lib.isFunction(chld.resetData)) {
+      console.warn(chld, 'does not have method "resetData"');
+      return;
+    }
+    chld.resetData();
+  }
+
+  DataHolder.addMethods = function (klass) {
+    lib.inheritMethods(klass, DataHolder
+      ,'set_pristine'
+      ,'resetData'
+      ,'setDataReceived'
+      ,'nullValue'
+    );
+  };
+
+  return DataHolder;
+}
+module.exports = createDataHolder;
+
+},{}],18:[function(require,module,exports){
+function createFormMixin (lib, mylib) {
+  'use strict';
+
+  var HashDistributorMixin = mylib.HashDistributor,
+    HashCollectorMixin = mylib.HashCollector,
+    DataHolderMixin = mylib.DataHolder;
+
+  function FormMixin (options) {
+    HashDistributorMixin.call(this, options);
+    HashCollectorMixin.call(this, options);
+    DataHolderMixin.call(this, options);
+  }
+  FormMixin.prototype.destroy = function () {
+    DataHolderMixin.prototype.destroy.call(this);
+    HashDistributorMixin.prototype.destroy.call(this);
+    HashCollectorMixin.prototype.destroy.call(this);
+  };
+  FormMixin.prototype.set_data = function (data) {
+    var ret = true;
+    this.set('initiallyvalid', null);
+    this.set('valid', null);
+    if (false === this.dataHolderUnderReset) {
+      this.resetData();
+    } else {
+    }
+    if (lib.isVal(data)) {
+      ret = HashDistributorMixin.prototype.set_data.call(this, data);
+    }
+    this.recheckChildren();
+    return ret;
+  };
+
+  FormMixin.addMethods = function (klass) {
+    HashDistributorMixin.addMethods(klass);
+    HashCollectorMixin.addMethods(klass);
+    DataHolderMixin.addMethods(klass);
+    lib.inheritMethods(klass, FormMixin
+      ,'set_data'
+    );
+  };
+
+  mylib.Form = FormMixin;
+};
+module.exports = createFormMixin;
+
+},{}],19:[function(require,module,exports){
+function createHashCollectorMixin (lib) {
+  'use strict';
+
+  function HashCollectorMixin (options) {
+    this.collectorinitialvalid = null;
+    this.collectorvalid = null;
+    this.collectorvalue = null;
+    this.hashCollectorListeners = [];
+    this.wantsSubmit = new lib.HookCollection();
+  }
+  HashCollectorMixin.prototype.destroy = function () {
+    if (this.wantsSubmit) {
+      this.wantsSubmit.destroy();
+    }
+    this.wantsSubmit = null;
+    if (this.hashCollectorListeners) {
+      lib.arryDestroyAll(this.hashCollectorListeners);
+    }
+    this.hashCollectorListeners = null;
+    this.collectorvalue = null;
+    this.collectorvalid = null;
+    this.collectorinitialvalid = null;
+  };
+  HashCollectorMixin.prototype.get_value = function () {
+    return this.collectorvalue;
+  };
+  HashCollectorMixin.prototype.set_value = function (value) {
+    this.collectorvalue = value;
+    return true;
+  };
+  HashCollectorMixin.prototype.get_initiallyvalid = function () {
+    return this.collectorinitialvalid;
+  };
+  HashCollectorMixin.prototype.set_initiallyvalid = function (val) {
+    //console.log(this.id, 'setting initiallyvalid to', val, 'with', this.mydata);
+    this.collectorinitialvalid = val;
+    return true;
+  };
+  HashCollectorMixin.prototype.get_valid = function () {
+    return this.collectorvalid;
+  };
+  HashCollectorMixin.prototype.set_valid = function (valid) {
+    if (!lib.isVal(this.collectorvalid) && lib.isVal(valid)) {
+      this.set('initiallyvalid', valid);
+    }
+    this.collectorvalid = valid;
+    return true;
+  };
+  HashCollectorMixin.prototype.fireSubmit = function () {
+    if (!this.get('valid')) {
+      return;
+    }
+    this.wantsSubmit.fire(this.get('value'));
+  };
+  HashCollectorMixin.prototype.recheckChildren = function () {
+    var vldfromchildren, valsfromchildren;
+    vldfromchildren = getValidityFromChildren.call(this);
+    console.log('finally', this.id, 'valid', vldfromchildren, 'with', this.mydata);
+    this.set('valid', vldfromchildren);
+    valsfromchildren = getValuesFromChildren.call(this);
+    /*
+    if (vldfromchildren) {
+      console.log(this.id, 'valid with values', valsfromchildren);
+    }
+    console.log(this.id, 'valid', vldfromchildren, valsfromchildren);
+    */
+    this.set('value', valsfromchildren);
+  };
+  HashCollectorMixin.prototype.hookToCollectorValidity = function () {
+    var hookvalid = this.getConfigVal('hookvalid');
+    if (hookvalid) {
+      hookTo.call(this, hookvalid, 'enabled');
+      hookTo.call(this, hookvalid, 'actual');
+    }
+    if (this.__children) {
+      this.__children.traverse(chld2mehooker.bind(this));
+    }
+  };
+
+
+  HashCollectorMixin.addMethods = function (klass) {
+    lib.inheritMethods(klass, HashCollectorMixin
+      ,'get_value'
+      ,'set_value'
+      ,'get_initiallyvalid'
+      ,'set_initiallyvalid'
+      ,'get_valid'
+      ,'set_valid'
+      ,'fireSubmit'
+      ,'recheckChildren'
+      ,'hookToCollectorValidity'
+    );
+    HashCollectorMixin.addPostInitialization(klass);
+  };
+  HashCollectorMixin.addPostInitialization = function (klass) {
+    klass.prototype.postInitializationMethodNames = 
+      klass.prototype.postInitializationMethodNames.concat(['hookToCollectorValidity']);
+  };
+
+  function datagetter (data, chld) {
+    var fieldname = chld.getConfigVal('fieldname'),
+      val;
+    if (!fieldname) {
+      console.warn('Child', chld.constructor.name, chld.id, 'has no fieldname');
+      return;
+    }
+    try {
+      val = chld.get('value');
+      if (lib.isArray(fieldname)) {
+        if (!(lib.isVal(val) && 'object' === typeof val)) {
+          return;
+        }
+        //console.log('traversing', fieldname, 'with val', val);
+        fieldname.forEach(writepiecewisetodata.bind(null, data, val));
+        data = null;
+        val = null;
+        return;
+      }
+      writetodata(data, val, fieldname);
+    } catch (e) {
+      console.warn('Could not get "value" from', chld);
+      console.warn(e);
+      return;
+    }
+  }
+  function writepiecewisetodata (data, val, fieldname) {
+    //console.log('writetodata', data, 'val', val[fieldname], 'to', fieldname);
+    writetodata(data, val[fieldname], fieldname);
+    //writetodata(data, lib.readPropertyFromDotDelimitedString(data, fieldname), fieldname);
+  }
+  function writetodata (data, val, fieldname) {
+    data[fieldname] = val;
+    //lib.writePropertyFromDotDelimitedString(data, fieldname, val, true);
+  }
+
+  //static method, "this" matters
+  function hookTo (hookvalid, targetname) {
+    var target = hookvalid[targetname];
+    if (!target) {
+      return;
+    }
+    if (lib.isArray(target)) {
+      target.forEach(hooker.bind(this, targetname));
+      return;
+    }
+    hooker.call(this, targetname, target);
+  }
+
+  //static method, "this" matters
+  function hooker (targetname, target) {
+    var chld = this.getElement(target);
+    if (!chld) {
+      return;
+    }
+    this.hashCollectorListeners.push(this.attachListener('changed', 'valid', chld.set.bind(chld, targetname)));
+  }
+
+  //static method, "this" matters
+  function chld2mehooker (chld) {
+    this.hashCollectorListeners.push(chld.attachListener('changed', 'valid', this.recheckChildren.bind(this)));
+    this.hashCollectorListeners.push(chld.attachListener('changed', 'value', this.recheckChildren.bind(this)));
+  }
+
+  //static method, "this" matters
+  function getValuesFromChildren () {
+    var ret = {}, _r = ret;
+    if (!this.__children) {
+      return ret;
+    }
+    this.__children.traverse(datagetter.bind(null, _r));
+    _r = null;
+    return ret;
+  }
+
+  //static method, "this" matters
+  function getValidityFromChildren () {
+    var ret, _r;
+    if (!this.__children) {
+      return false;
+    }
+    ret = {valid: null, anypristine: false};
+    _r = ret;
+    this.__children.traverse(validandpristinegetter.bind(this, _r));
+    console.log(this.id, 'valid', ret.valid, 'any pristine', ret.anypristine);
+    _r = null;
+    if (ret.anypristine) {
+      ret = void 0;
+    } else {
+      ret = ret.valid;
+    }
+    return ret;
+  };
+
+  //static method, "this" matters
+  function validandpristinegetter (validobj, chld) {
+    var valid, pristine;
+    if (!chld) {
+      return;
+    }
+    if (validobj.anypristine===true) {
+      return;
+    }
+    if (validobj.valid===false) {
+      return;
+    }
+    if (!chld.get('required')) {
+      return;
+    }
+    try {
+      pristine = chld.get('pristine');
+      if (pristine) {
+        console.log(chld.id, 'is pristine');
+        validobj.anypristine = true;
+        return;
+      } else {
+        //console.log(chld.id, 'is NOT pristine');
+      }
+    } catch (e) {
+      //console.log('Could not get "pristine" from', chld);
+    }
+    try {
+      valid = chld.get('valid');
+      //console.log('"valid" of', chld, 'is', valid);
+      if (!valid) {
+        console.log(chld.id, 'is not valid', valid);
+        validobj.valid = lib.isVal(valid) ? false : null;
+        return;
+      }
+      validobj.valid = true;
+    } catch (e) {
+      //console.log('Could not get "valid" from', chld);
+    }
+  }
+
+
+  return HashCollectorMixin;
+}
+module.exports = createHashCollectorMixin;
+
+},{}],20:[function(require,module,exports){
 function createHashDistributorMixin (lib) {
   'use strict';
 
@@ -1176,7 +1699,7 @@ function createHashDistributorMixin (lib) {
       return;
     }
     this.hashdata = data;
-    this.__children.traverse(datasetter.bind(null, data));
+    this.__children.traverse(datasetter.bind(this, data));
     data = null;
     return true;
   };
@@ -1189,28 +1712,365 @@ function createHashDistributorMixin (lib) {
   };
 
   function datasetter (data, chld) {
-    chld.set('data', data);
+    try {
+      chld.set('data', data);
+    } catch(e) {
+      console.warn(this.id, 'could not set data on', chld.constructor.name, chld.id);//, e);
+    }
   }
 
   return HashDistributorMixin;
 }
 module.exports = createHashDistributorMixin;
 
-},{}],17:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 function createFormRenderingMixins (execlib) {
   'use strict';
 
-  var lib = execlib.lib;
+  var lib = execlib.lib,
+    ret = {
+      HashDistributor: require('./hashdistributorcreator')(lib),
+      HashCollector: require('./hashcollectorcreator')(lib),
+      DataHolder: require('./dataholdercreator')(lib),
+      BitMaskCheckboxes: require('./bitmaskcheckboxescreator')(lib),
+      Radios: require('./radioscreator')(lib),
+      TextFromHash: require('./textfromhashcreator')(lib),
+      InputHandler: require('./inputhandlercreator')(lib),
+      NumericSpinner: require('./numericspinnercreator')(lib)
+    };
 
-  return {
-    HashDistributor: require('./hashdistributorcreator')(lib),
-    TextFromHash: require('./textfromhashcreator')(lib)
-  };
-
+  require('./formcreator')(lib, ret);
+  return ret;
 }
 module.exports = createFormRenderingMixins;
 
-},{"./hashdistributorcreator":16,"./textfromhashcreator":18}],18:[function(require,module,exports){
+},{"./bitmaskcheckboxescreator":16,"./dataholdercreator":17,"./formcreator":18,"./hashcollectorcreator":19,"./hashdistributorcreator":20,"./inputhandlercreator":22,"./numericspinnercreator":23,"./radioscreator":24,"./textfromhashcreator":25}],22:[function(require,module,exports){
+function createInputHandlerMixin (lib) {
+  'use strict';
+
+  function InputHandlerMixin (options) {
+    this.value = options.value;
+    this.onInputElementKeyUper = this.onInputElementKeyUp.bind(this);
+    this.onInputElementChanger = this.onInputElementChange.bind(this);
+  }
+  InputHandlerMixin.prototype.destroy = function () {
+    var ie = this.findTheInputElement();
+    if (ie && this.onInputElementChanger && this.onInputElementKeyUper) {
+      ie.off('change', this.onInputElementChanger);
+      ie.off('keyup', this.onInputElementKeyUper);
+    }
+    this.onInputElementChanger = null;
+    this.onInputElementKeyUper = null;
+    this.value = null;
+  };
+  InputHandlerMixin.prototype.startListeningToInputElement = function () {
+    var ie = this.findTheInputElement();
+    if (!ie) {
+      return;
+    }
+    ie.on('change', this.onInputElementChanger);
+    ie.on('keyup', this.onInputElementKeyUper);
+    this.setTheInputElementValue(this.value);
+  };
+  InputHandlerMixin.prototype.onInputElementKeyUp = function () {
+  };
+  InputHandlerMixin.prototype.onInputElementChange = function () {
+    this.set('value', this.getTheInputElementValue());
+  };
+  InputHandlerMixin.prototype.setTheInputElementValue = function (val) {
+    var ie = this.findTheInputElement();
+    if (!ie) {
+      return;
+    }
+    if (ie.is(':checkbox')) {
+      ie.prop('checked', val);
+      return;
+    }
+    ie.val(val);
+  };
+  InputHandlerMixin.prototype.getTheInputElementValue = function () {
+    var ie = this.findTheInputElement();
+    if (!ie) {
+      return null;
+    }
+    if (ie.is(':checkbox')) {
+      return ie.prop('checked');
+    }
+    return ie.val();
+  };
+  InputHandlerMixin.prototype.set_value = function (val) {
+    this.value = val;
+    this.setTheInputElementValue(val);
+    return true;
+  };
+  InputHandlerMixin.prototype.get_value = function () {
+    return this.value;
+  };
+
+  InputHandlerMixin.prototype.findTheInputElement = function () {
+    var inputfinder;
+    if (!this.$element) {
+      console.warn('Cannot find my input element because I have no this.$element');
+      return null;
+    }
+    inputfinder = this.getConfigVal('input_finder');
+    return inputfinder ? this.$element.find(inputfinder) : this.$element;
+  };
+
+  InputHandlerMixin.addMethods = function (klass) {
+    lib.inheritMethods(klass, InputHandlerMixin
+      ,'startListeningToInputElement'
+      ,'onInputElementKeyUp'
+      ,'onInputElementChange'
+      ,'findTheInputElement'
+      ,'setTheInputElementValue'
+      ,'getTheInputElementValue'
+      ,'set_value'
+      ,'get_value'
+    );
+    klass.prototype.postInitializationMethodNames = 
+      klass.prototype.postInitializationMethodNames.concat(['startListeningToInputElement']);
+  };
+
+  return InputHandlerMixin;
+}
+module.exports = createInputHandlerMixin;
+
+},{}],23:[function(require,module,exports){
+function createNumericSpinner (lib) {
+  'use strict';
+
+  function NumericSpinnerMixin (options) {
+    this.quantitynav = null;
+  }
+  NumericSpinnerMixin.prototype.destroy = function () {
+    if (this.quantitynav) {
+      this.quantitynav.remove();
+    }
+    this.quantitynav = null;
+  };
+  NumericSpinnerMixin.prototype.initializeNumericSpinner = function () {
+    var input;
+    if (!this.$element) {
+      return;
+    }
+    if (this.$element.is('input')) {
+      console.warn(this.constructor.name, this.id, 'must be a DOM element that contains the numeric input');
+      return;
+      //input = this.$element;
+    } else {
+      input = this.$element.find('input');
+      if (!(input && input.length>0)) {
+        console.warn('No input found on', this.$element);
+        return;
+      }
+      if (input.length>1) {
+        console.warn('More than one input found on', this.$element);
+        return;
+      }
+    }
+    this.quantitynav = jQuery('<div class="quantity-nav"><div class="quantity-button quantity-up">+</div><div class="quantity-button quantity-down">-</div></div>');
+    this.quantitynav.find('.quantity-up').click(this.onSpinnerButtonClicked.bind(this, 1));
+    this.quantitynav.find('.quantity-down').click(this.onSpinnerButtonClicked.bind(this, -1));
+    this.quantitynav.insertAfter(input);
+  };
+  NumericSpinnerMixin.prototype.onSpinnerButtonClicked = function (inc) {
+    var input, step, oldval, newval;
+    if (!this.$element) {
+      return;
+    }
+    input = this.$element.find('input');
+    oldval = parseInt(input.val()) || 0;
+    step = this.numericSpinnerValueOf(input, 'step', 1);
+    newval = oldval + inc*step;
+    if (!this.isNumericValueValid(newval, input)) {
+      if (!this.isNumericValueValid(oldval, input)) {
+        newval = this.numericSpinnerValueOf(input, 'min', 0);
+        if (!this.isNumericValueValid(newval, input)) {
+          return;
+        }
+      } else {
+        return;
+      }
+    }
+    input.val(newval);
+    input.trigger('change');
+  };
+  NumericSpinnerMixin.prototype.isNumericValueValid = function (val, input) {
+    var step, min, max;
+    if (!lib.isNumber(val)) {
+      return false;
+    }
+    input = input || this.$element.find('input');
+    if (!(input && input.length)) {
+      return false;
+    }
+    step = this.numericSpinnerValueOf(input, 'step', 1);
+    max = this.numericSpinnerValueOf(input, 'max', 0);
+    min = this.numericSpinnerValueOf(input, 'min', 0);
+    if (val>max) {
+      return false;
+    }
+    if (val<min) {
+      return false;
+    }
+    if ((val-min)%step !== 0) {
+      return false;
+    }
+    return true;
+  };
+  NumericSpinnerMixin.prototype.numericSpinnerValueOf = function (input, name, dflt) {
+    var ret = parseInt(this.getConfigVal(name) || input.attr(name));
+    if (lib.isNumber(ret)) {
+      return ret;
+    }
+    return dflt;
+  };
+
+  NumericSpinnerMixin.addMethods = function (klass) {
+    lib.inheritMethods(klass, NumericSpinnerMixin
+      ,'initializeNumericSpinner'
+      ,'onSpinnerButtonClicked'
+      ,'numericSpinnerValueOf'
+      ,'isNumericValueValid'
+    );
+    klass.prototype.preInitializationMethodNames = 
+      klass.prototype.preInitializationMethodNames.concat(['initializeNumericSpinner']);
+  };
+
+  return NumericSpinnerMixin;
+}
+module.exports = createNumericSpinner;
+
+},{}],24:[function(require,module,exports){
+function createRadiosMixin (lib) {
+  'use strict';
+
+  function RadiosMixin (options) {
+    if (!options) {
+      throw new Error ('RadiosMixin needs the options hash in its ctor');
+    }
+    if (!options.hashfield) {
+      throw new Error ('RadiosMixin needs the "hashfield" name in its ctor options');
+    }
+    if (!lib.isArray(options.values)) {
+      throw new Error ('RadiosMixin needs the "values" array of finder Strings in its ctor options');
+    }
+    this.radiochangeder = radioChanged.bind(this);
+  }
+  RadiosMixin.prototype.destroy = function () {
+    if (this.radiochangeder) {
+      if (this.$element) {
+        this.$element.find(':radio').off('click', this.radiochangeder);
+      }
+    }
+    this.radiochangeder = null;
+  };
+  RadiosMixin.prototype.hashToText = function (data) {
+    if (lib.isFunction(this.setDataReceived)) {
+      this.setDataReceived();
+    }
+    this.set('value', lib.isVal(data) ? data[this.getConfigVal('hashfield')] : null);
+    return null;
+  };
+  RadiosMixin.prototype.setTheInputElementValue = function (val) {
+    setValueToRadios.call(this, val);
+    this.changed.fire('valid', lib.isNumber(val) && val>0);
+  };
+  RadiosMixin.prototype.getTheInputElementValue = function () {
+    return this.value;
+  };
+  /*
+  RadiosMixin.prototype.set_value = function (val) {
+    setValueToRadios.call(this, val);
+    this.changed.fire('valid', lib.isNumber(val) && val>0);
+    return true;
+  };
+  */
+  RadiosMixin.prototype.get_valid = function () {
+    var checked;
+    if (!this.$element) {
+      return false;
+    }
+    checked = this.$element.find('input:checked');
+    return checked&&checked.length===1;
+  };
+
+  RadiosMixin.prototype.radiosMaybeStartListening = function () {
+    setValueToRadios.call(this, null);
+    if (this.$element) {
+      this.$element.find(':radio').prop('checked', false);
+    }
+    if (!this.getConfigVal('interactive')) {
+      this.$element.find(':radio').prop('disabled', true);
+      return;
+    }
+    this.$element.find(':radio').on('click', this.radiochangeder);
+  };
+
+  RadiosMixin.addMethods = function (klass) {
+    lib.inheritMethods(klass, RadiosMixin
+      ,'hashToText'
+      ,'get_value'
+      //,'set_value'
+      ,'setTheInputElementValue'
+      ,'getTheInputElementValue'
+      ,'get_valid'
+      ,'radiosMaybeStartListening'
+    );
+    klass.prototype.postInitializationMethodNames = 
+      klass.prototype.postInitializationMethodNames.concat(['radiosMaybeStartListening']);
+  };
+
+  //static method - "this" matters
+  function setValueToRadios (val) {
+    var values = this.getConfigVal('values');
+    if (lib.isArray(values)) {
+      values.reduce(radiosCheckboxSetter.bind(this, val), 1);
+      val = null;
+    }
+  }
+
+  //static method - "this" matters
+  function radiosCheckboxSetter (val, res, finder) {
+    var subelement = this.$element.find(finder);
+    if (!(subelement && subelement.length===1)) {
+      return;
+    }
+    subelement.attr('name', this.getConfigVal('hashfield'));
+    subelement.val(res);
+    subelement.prop('checked', res===val);
+    res ++;
+    return res;
+  };
+
+  //static method - "this" matters
+  function getValueFromRadios () {
+    var checked, ret;
+    if (!this.$element) {
+      return null;
+    }
+    checked = this.$element.find('input:checked');
+    if (!(checked && checked.length===1)) {
+      return null;
+    }
+    ret = parseInt(checked.val());
+    if (lib.isNumber(ret)) {
+      return ret;
+    }
+    return null;
+  }
+
+  //static method - "this" matters
+  function radioChanged () {
+    this.set('value', getValueFromRadios.call(this));
+  }
+  
+  return RadiosMixin;
+}
+module.exports = createRadiosMixin;
+
+},{}],25:[function(require,module,exports){
 function createTextFromHashMixin (lib) {
   'use strict';
 
@@ -1222,7 +2082,20 @@ function createTextFromHashMixin (lib) {
     return null;
   };
   TextFromHashMixin.prototype.set_data = function (data) {
-    this.set(this.getConfigVal('text_is_html') ? 'html' : 'text', this.hashToText(data)||'');
+    var t = this.hashToText(data);
+    if (null === t) {
+      return;
+    }
+    this.set(this.targetedStateForHashToText(), t||'');
+  };
+  TextFromHashMixin.prototype.targetedStateForHashToText = function () {
+    if (this.getConfigVal('text_is_value')) {
+      return 'value';
+    }
+    if (this.getConfigVal('text_is_html')) {
+      return 'html';
+    }
+    return 'text';
   };
   TextFromHashMixin.prototype.hashToText = function () {
     throw new Error(this.constructor.name+' has to implement its own hashToText');
@@ -1233,6 +2106,7 @@ function createTextFromHashMixin (lib) {
       ,'get_data'
       ,'set_data'
       ,'hashToText'
+      ,'targetedStateForHashToText'
     );
   };
 
@@ -1240,7 +2114,7 @@ function createTextFromHashMixin (lib) {
 }
 module.exports = createTextFromHashMixin;
 
-},{}],19:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 function createHandlers (execlib, applib, linkinglib) {
   'use strict';
 
@@ -1433,7 +2307,7 @@ function createHandlers (execlib, applib, linkinglib) {
 
 module.exports = createHandlers;
 
-},{}],20:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 function createJQueryCreate (execlib, templatelib) {
   'use stict';
 
@@ -1455,7 +2329,7 @@ function createJQueryCreate (execlib, templatelib) {
 
 module.exports = createJQueryCreate;
 
-},{}],21:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 /**
  * A library that uses {@link allex://allex_applib} and jQuery
  * to build the basic Web App functionality.
@@ -1505,7 +2379,7 @@ function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib) 
 
 module.exports = createLib;
 
-},{"./elements":11,"./formrenderingmixins":17,"./handlers":19,"./jquerycreatecreator":20,"./misc/router":22,"./modifiers/routecontrollercreator":23,"./modifiers/selectorcreator":24,"./preprocessors/dataviewcreator":25,"./preprocessors/keyboardcreator":26,"./preprocessors/logoutdeactivatorcreator":27,"./preprocessors/pipelinecreator":28,"./preprocessors/roleroutercreator":29,"./preprocessors/tabviewcreator":30,"./resources/fontloadercreator":31,"./resources/throbbercreator":32,"./resources/urlgeneratorcreator":33}],22:[function(require,module,exports){
+},{"./elements":11,"./formrenderingmixins":21,"./handlers":26,"./jquerycreatecreator":27,"./misc/router":29,"./modifiers/routecontrollercreator":30,"./modifiers/selectorcreator":31,"./preprocessors/dataviewcreator":32,"./preprocessors/keyboardcreator":33,"./preprocessors/logoutdeactivatorcreator":34,"./preprocessors/pipelinecreator":35,"./preprocessors/roleroutercreator":36,"./preprocessors/tabviewcreator":37,"./resources/fontloadercreator":38,"./resources/throbbercreator":39,"./resources/urlgeneratorcreator":40}],29:[function(require,module,exports){
 function createRouterLib (allex) {
   'use strict';
 
@@ -1748,7 +2622,7 @@ function createRouterLib (allex) {
 
 module.exports = createRouterLib;
 
-},{}],23:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 function createRouteController (allex, applib) {
   'use strict';
 
@@ -1776,7 +2650,7 @@ function createRouteController (allex, applib) {
 
 module.exports = createRouteController;
 
-},{}],24:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 function createSelectorModifier (allex, applib) {
   'use strict';
 
@@ -1836,7 +2710,7 @@ function createSelectorModifier (allex, applib) {
 
 module.exports = createSelectorModifier;
 
-},{}],25:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 function createDataViewProcessor (allex, applib) {
   'use strict';
 
@@ -1921,7 +2795,7 @@ function createDataViewProcessor (allex, applib) {
 
 module.exports = createDataViewProcessor;
 
-},{}],26:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 function createKeyboardProcessor (allex, applib) {
   'use strict';
 
@@ -1977,7 +2851,7 @@ function createKeyboardProcessor (allex, applib) {
 
 module.exports = createKeyboardProcessor;
 
-},{}],27:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 function createLogoutDeactivatorProcessor (allex, applib) {
   'use strict';
   var lib = allex.lib,
@@ -2064,7 +2938,7 @@ function createLogoutDeactivatorProcessor (allex, applib) {
 
 module.exports = createLogoutDeactivatorProcessor;
 
-},{}],28:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 function createPipelineProcessor (allex, applib) {
   'use strict';
   var lib = allex.lib,
@@ -2428,7 +3302,7 @@ function createPipelineProcessor (allex, applib) {
 module.exports = createPipelineProcessor;
 
 
-},{}],29:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 function createRoleRouterPreprocessor (allex, routerlib, applib) {
   'use strict';
   var lib = allex.lib,
@@ -2593,7 +3467,7 @@ function createRoleRouterPreprocessor (allex, routerlib, applib) {
 
 module.exports = createRoleRouterPreprocessor;
 
-},{}],30:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 function createTabViewProcessor (allex, routerlib, applib, templatelib) {
   'use strict';
   var lib = allex.lib,
@@ -2753,7 +3627,7 @@ function createTabViewProcessor (allex, routerlib, applib, templatelib) {
 
 module.exports = createTabViewProcessor;
 
-},{}],31:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 function createFontLoader(allex, applib, $) {
   'use strict';
 
@@ -2811,7 +3685,7 @@ function createFontLoader(allex, applib, $) {
 
 module.exports = createFontLoader;
 
-},{}],32:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 function createThrobberResource (allex, applib) {
   'use strict';
 
@@ -2895,7 +3769,7 @@ function createThrobberResource (allex, applib) {
 
 module.exports = createThrobberResource;
 
-},{}],33:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 function createURLGeneratorResource (execlib, applib) {
   var lib = execlib.lib,
   BasicResourceLoader = applib.BasicResourceLoader,

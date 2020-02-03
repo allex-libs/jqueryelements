@@ -15,7 +15,7 @@ function createHashDistributorMixin (lib) {
       return;
     }
     this.hashdata = data;
-    this.__children.traverse(datasetter.bind(null, data));
+    this.__children.traverse(datasetter.bind(this, data));
     data = null;
     return true;
   };
@@ -28,7 +28,11 @@ function createHashDistributorMixin (lib) {
   };
 
   function datasetter (data, chld) {
-    chld.set('data', data);
+    try {
+      chld.set('data', data);
+    } catch(e) {
+      console.warn(this.id, 'could not set data on', chld.constructor.name, chld.id);//, e);
+    }
   }
 
   return HashDistributorMixin;

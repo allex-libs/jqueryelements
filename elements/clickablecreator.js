@@ -28,7 +28,7 @@ function createClickable (execlib, applib, templatelib, htmltemplateslib) {
     this.$element.on('click', this.onElementClicked.bind(this));
   };
   ClickableElement.prototype.onElementClicked = function (jqueryevent) {
-    if (!this.get('enabled')) {
+    if (!this.get('enabled') && !this.getConfigVal('ignore_enabled')) {
       return;
     }
     this.clicked.fire.call(this.clicked, [jqueryevent, this.clickvalue]);

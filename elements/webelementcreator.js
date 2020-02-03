@@ -17,6 +17,7 @@ function createWebElement (execlib, applib, templatelib) {
     this._addHook ('onShown');
     this._addHook ('onHidden');
     this._helpers = null;
+    this._htmlcontent;
 
     var helperObj = this.getConfigVal ('helperObjects');
     for (var i in helperObj) {
@@ -26,6 +27,7 @@ function createWebElement (execlib, applib, templatelib) {
   lib.inherit (WebElement, BasicElement);
 
   WebElement.prototype.__cleanUp = function () {
+    this._htmlcontent = null;
     if (this._helpers) {
       lib.container.destroyAll(this._helpers);
       this._helpers.destroy();
@@ -34,6 +36,9 @@ function createWebElement (execlib, applib, templatelib) {
     if (this.$element) {
       if (this.elementCreatedByMe) {
         this.$element.remove();
+      } else {
+        this.$element.remoteAttr('allexid');
+        this.$element.remoteAttr('allextype');
       }
     }
     this.$element = null;
@@ -115,21 +120,30 @@ function createWebElement (execlib, applib, templatelib) {
     var finder = this.tryToCreatejQueryElement();
     if (!(this.$element && this.$element.length)) {
       if (!this.tryToCreateMarkup()) {
+        console.error('on', this.findingElement());
         throw new Error('Unable to find DOM element '+this.get('id')+' using jQuery selector '+selector+' ('+finder+')');
       }
       finder = this.tryToCreatejQueryElement();
       if (!(this.$element && this.$element.length)) {
+        console.error('on', this.findingElement());
         throw new Error('Unable to find DOM element '+this.get('id')+' using jQuery selector '+selector+' ('+finder+') even after creation with default_markup '+this.getDefaultMarkup());
       }
     }
     this.elementCreatedByMe = true;
     this.$element.attr('allexid', this.get('id'));
+    this.$element.attr('allextype', this.constructor.name);
   };
 
   WebElement.prototype.tryToCreatejQueryElement = function () {
     var selector = this.getConfigVal('self_selector')||'#',
       finder = finderFrom(selector, this.get('id')),
-      findingelem;
+      findingelem = this.findingElement();
+    this.$element = findingelem.find(finder);
+    return finder;
+  };
+
+  WebElement.prototype.findingElement = function () {
+    var findingelem;
     if (this.getConfigVal('force_dom_parent')) {
       findingelem = $(this.getConfigVal('force_dom_parent'));
     }
@@ -143,8 +157,10 @@ function createWebElement (execlib, applib, templatelib) {
       }
     }
     findingelem = possiblyRelocate(findingelem, this.getConfigVal('target_on_parent'));
-    this.$element = findingelem.find(finder);
-    return finder;
+    if (!(findingelem && findingelem.length)) {
+      throw new Error(this.constructor.name+' '+this.get('id')+' misconfigured, so the parent DOM element cannot be located, check the "self_selector" or "force_dom_parent" or "target_on_parent"');
+    }
+    return findingelem;
   };
 
   var _wrappertargetclass = 'wrappertarget';
@@ -233,19 +249,48 @@ function createWebElement (execlib, applib, templatelib) {
   
   //html start
   WebElement.prototype.set_html = function (val) {
-    if (this.$element) {
-      this.$element.html(val);
+    if (!this.$element) {
+      return false;
     }
+    this.$element.html(val);
+    this._htmlcontent = val;
     return true;
   };
   WebElement.prototype.get_html = function () {
-    if (this.$element) {
-      return this.$element.html();
-    }
+    return this._htmlcontent;
     return null;
   };
   //text end
   
+  //value start
+  WebElement.prototype.set_value = function (val) {
+    if (this.$element) {
+      this.$element.val(val);
+    }
+    return true;
+  };
+  WebElement.prototype.get_value = function () {
+    if (this.$element) {
+      return this.$element.val();
+    }
+    return null;
+  };
+  //value end
+  
+  //required start
+  WebElement.prototype.get_required = function () {
+    var req;
+    if (this.$element) {
+      req = this.getConfigVal('required');
+      if (lib.isVal(req)) {
+        return req;
+      }
+      return this.$element.attr('required');
+    }
+    return null;
+  };
+  //required end
+
   //enabled start
   WebElement.prototype.set_enabled = function (val) {
     if (this.$element) {

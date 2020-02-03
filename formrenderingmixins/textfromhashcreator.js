@@ -9,7 +9,20 @@ function createTextFromHashMixin (lib) {
     return null;
   };
   TextFromHashMixin.prototype.set_data = function (data) {
-    this.set(this.getConfigVal('text_is_html') ? 'html' : 'text', this.hashToText(data)||'');
+    var t = this.hashToText(data);
+    if (null === t) {
+      return;
+    }
+    this.set(this.targetedStateForHashToText(), t||'');
+  };
+  TextFromHashMixin.prototype.targetedStateForHashToText = function () {
+    if (this.getConfigVal('text_is_value')) {
+      return 'value';
+    }
+    if (this.getConfigVal('text_is_html')) {
+      return 'html';
+    }
+    return 'text';
   };
   TextFromHashMixin.prototype.hashToText = function () {
     throw new Error(this.constructor.name+' has to implement its own hashToText');
@@ -20,6 +33,7 @@ function createTextFromHashMixin (lib) {
       ,'get_data'
       ,'set_data'
       ,'hashToText'
+      ,'targetedStateForHashToText'
     );
   };
 
