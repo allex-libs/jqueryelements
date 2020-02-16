@@ -39,6 +39,7 @@ function createWebElement (execlib, applib, templatelib) {
       } else {
         this.$element.remoteAttr('allexid');
         this.$element.remoteAttr('allextype');
+        this.removeClassesSet();
       }
     }
     this.$element = null;
@@ -116,8 +117,9 @@ function createWebElement (execlib, applib, templatelib) {
   };
 
   WebElement.prototype.createjQueryElement = function () {
-    var selector = this.getConfigVal('self_selector')||'#';
-    var finder = this.tryToCreatejQueryElement();
+    var selector, finder, classestoset, elem;
+    selector = this.getConfigVal('self_selector')||'#';
+    finder = this.tryToCreatejQueryElement();
     if (!(this.$element && this.$element.length)) {
       if (!this.tryToCreateMarkup()) {
         console.error('on', this.findingElement());
@@ -132,7 +134,19 @@ function createWebElement (execlib, applib, templatelib) {
     this.elementCreatedByMe = true;
     this.$element.attr('allexid', this.get('id'));
     this.$element.attr('allextype', this.constructor.name);
+    classestoset = this.getConfigVal('set_classes');
+    if (lib.isArray(classestoset)) {
+      elem = this.$element;
+      classestoset.forEach(classsetterifnotpresent.bind(null, elem));
+      elem = null;
+    }
   };
+
+  function classsetterifnotpresent (elem, classname) {
+    if (!elem.hasClass(classname)) {
+      elem.addClass(classname);
+    }
+  }
 
   WebElement.prototype.tryToCreatejQueryElement = function () {
     var selector = this.getConfigVal('self_selector')||'#',
@@ -170,7 +184,9 @@ function createWebElement (execlib, applib, templatelib) {
       appendee,
       dmw,
       dmwelement,
-      dmwtarget;
+      dmwtarget,
+      forcesibling,
+      sibling;
     if (!markup) {
       return false;
     }
@@ -203,6 +219,16 @@ function createWebElement (execlib, applib, templatelib) {
     }
     appendee = $(markup);
     decorateElement(appendee, this.getConfigVal('self_selector')||'#', this.get('id'));
+    forcesibling = this.getConfigVal('force_prev_sibling');
+    if (forcesibling) {
+      sibling = appender.find(forcesibling);
+      if (!(sibling && sibling[0])) {
+        console.error('on', appender);
+        throw new Error ('force_prev_sibling was defined as "'+forcesibling+'", but it was not found');
+      }
+      sibling.after(appendee);
+      return true;
+    }
     appender.append(appendee);
     return true;
   };
@@ -224,6 +250,22 @@ function createWebElement (execlib, applib, templatelib) {
     */
     return this.getConfigVal('default_markup');
   };
+
+  WebElement.prototype.removeClassesSet = function () {
+    var elem = this.$element, classestoset;
+    if (!elem) {
+      return;
+    }
+    classestoset = this.getConfigVal('set_classes');
+    if (lib.isArray(classestoset)) {
+      classestoset.forEach(classremovever.bind(null, elem));
+      elem = null;
+    }
+  };
+
+  function classremovever (elem, classname) {
+    elem.removeClass(classname);
+  }
 
   WebElement.prototype.set_actual = function (val) {
     if (!this.$element) {
@@ -383,7 +425,7 @@ function createWebElement (execlib, applib, templatelib) {
   };
 
   WebElement.prototype.showElement = function () {
-    this.$element.show(this.actual);
+    this.$element.show();//this.actual);
   };
 
   WebElement.prototype.hide = function () {
