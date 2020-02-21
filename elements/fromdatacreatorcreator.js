@@ -36,8 +36,12 @@ function createFromDataCreator (execlib, applib) {
     if (lib.isArray(data)) {
       this.createFromArryData(data);
     }
+    this.subElements.forEach(unbuffer);
     return this.super_set_data(data);
   };
+  function unbuffer(subel) {
+    subel.unbufferAllBufferableHookCollections();
+  }
   FromDataCreatorElement.prototype.super_set_data = function (data) {
     return DataAwareElement.prototype.set_data(data);
   };

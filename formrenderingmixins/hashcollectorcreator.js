@@ -100,8 +100,12 @@ function createHashCollectorMixin (lib) {
   function datagetter (data, chld) {
     var fieldname = chld.getConfigVal('fieldname'),
       val;
-    if (!fieldname) {
+    if (lib.isUndef(fieldname)) {
       console.warn('Child', chld.constructor.name, chld.id, 'has no fieldname');
+      return;
+    }
+    if (fieldname === null) {
+      //this chld has no fields to give
       return;
     }
     try {

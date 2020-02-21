@@ -17,7 +17,9 @@ function createRouterLib (allex) {
     this.element = null;
     this.onDeactivated = null;
     this.onActivated = null;
-    this.router.destroy(); //I will destroy router since there is no one outside which will destroy it ...
+    if (this.router) {
+      this.router.destroy(); //I will destroy router since there is no one outside which will destroy it ...
+    }
     this.router = null;
   };
 
@@ -62,7 +64,7 @@ function createRouterLib (allex) {
   RouterMixIn.prototype.__cleanUp = function () {
     this.default_page = null;
     this.page = null;
-    lib.container.destroyAll (this.pagesmap);
+    lib.containerDestroyAll (this.pagesmap);
     this.pagesmap.destroy();
     this.pagesmap = null;
   };

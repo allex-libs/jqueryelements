@@ -3,6 +3,7 @@ function createInputHandlerMixin (lib) {
 
   function InputHandlerMixin (options) {
     this.value = options.value;
+    this.valueChanged = this.createBufferableHookCollection();
     this.onInputElementKeyUper = this.onInputElementKeyUp.bind(this);
     this.onInputElementChanger = this.onInputElementChange.bind(this);
   }
@@ -14,6 +15,10 @@ function createInputHandlerMixin (lib) {
     }
     this.onInputElementChanger = null;
     this.onInputElementKeyUper = null;
+    if (this.valueChanged) {
+      this.valueChanged.destroy();
+    }
+    this.valueChanged = null;
     this.value = null;
   };
   InputHandlerMixin.prototype.startListeningToInputElement = function () {
@@ -52,8 +57,12 @@ function createInputHandlerMixin (lib) {
     return ie.val();
   };
   InputHandlerMixin.prototype.set_value = function (val) {
+    if (this.value === val) {
+      return false;
+    }
     this.value = val;
     this.setTheInputElementValue(val);
+    this.valueChanged.fire(val);
     return true;
   };
   InputHandlerMixin.prototype.get_value = function () {

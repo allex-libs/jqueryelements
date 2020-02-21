@@ -17,6 +17,11 @@ function createTabViewProcessor (allex, routerlib, applib, templatelib) {
       BasicElement.prototype.__cleanUp.call(this);
     };
 
+    TabViewElement.prototype.reinitializeRouter = function () {
+      RouterMixIn.prototype.__cleanUp.call(this);
+      RouterMixIn.call(this);
+    };
+
     TabViewElement.prototype._doInitializeView = function (tabnames, tabs, config, selector){
       var bind_actual = config.bind_actual, tabroute;
       this.default_page = config.default_tab||null;
@@ -79,10 +84,10 @@ function createTabViewProcessor (allex, routerlib, applib, templatelib) {
       var refs = [this.elementReferenceStringOf(desc, name+'_tab_view'), config.selector];
       this.elementsOf(desc).push ({
         name : name+'_tab_view',
-        type : 'TabViewElement',
-        options : {
+        type : config.type || 'TabViewElement',
+        options : lib.extend({
           toggle : config.toggle || false
-        }
+        }, config.options)
       });
 
       var tabnames = Object.keys (config.tabs);

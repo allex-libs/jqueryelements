@@ -402,8 +402,12 @@ function createFromDataCreator (execlib, applib) {
     if (lib.isArray(data)) {
       this.createFromArryData(data);
     }
+    this.subElements.forEach(unbuffer);
     return this.super_set_data(data);
   };
+  function unbuffer(subel) {
+    subel.unbufferAllBufferableHookCollections();
+  }
   FromDataCreatorElement.prototype.super_set_data = function (data) {
     return DataAwareElement.prototype.set_data(data);
   };
@@ -705,6 +709,7 @@ function createWebElement (execlib, applib, templatelib) {
       } else {
         this.$element.remoteAttr('allexid');
         this.$element.remoteAttr('allextype');
+        this.removeClassesSet();
       }
     }
     this.$element = null;
@@ -782,8 +787,9 @@ function createWebElement (execlib, applib, templatelib) {
   };
 
   WebElement.prototype.createjQueryElement = function () {
-    var selector = this.getConfigVal('self_selector')||'#';
-    var finder = this.tryToCreatejQueryElement();
+    var selector, finder, classestoset, elem;
+    selector = this.getConfigVal('self_selector')||'#';
+    finder = this.tryToCreatejQueryElement();
     if (!(this.$element && this.$element.length)) {
       if (!this.tryToCreateMarkup()) {
         console.error('on', this.findingElement());
@@ -798,7 +804,19 @@ function createWebElement (execlib, applib, templatelib) {
     this.elementCreatedByMe = true;
     this.$element.attr('allexid', this.get('id'));
     this.$element.attr('allextype', this.constructor.name);
+    classestoset = this.getConfigVal('set_classes');
+    if (lib.isArray(classestoset)) {
+      elem = this.$element;
+      classestoset.forEach(classsetterifnotpresent.bind(null, elem));
+      elem = null;
+    }
   };
+
+  function classsetterifnotpresent (elem, classname) {
+    if (!elem.hasClass(classname)) {
+      elem.addClass(classname);
+    }
+  }
 
   WebElement.prototype.tryToCreatejQueryElement = function () {
     var selector = this.getConfigVal('self_selector')||'#',
@@ -836,7 +854,9 @@ function createWebElement (execlib, applib, templatelib) {
       appendee,
       dmw,
       dmwelement,
-      dmwtarget;
+      dmwtarget,
+      forcesibling,
+      sibling;
     if (!markup) {
       return false;
     }
@@ -869,6 +889,16 @@ function createWebElement (execlib, applib, templatelib) {
     }
     appendee = $(markup);
     decorateElement(appendee, this.getConfigVal('self_selector')||'#', this.get('id'));
+    forcesibling = this.getConfigVal('force_prev_sibling');
+    if (forcesibling) {
+      sibling = appender.find(forcesibling);
+      if (!(sibling && sibling[0])) {
+        console.error('on', appender);
+        throw new Error ('force_prev_sibling was defined as "'+forcesibling+'", but it was not found');
+      }
+      sibling.after(appendee);
+      return true;
+    }
     appender.append(appendee);
     return true;
   };
@@ -890,6 +920,22 @@ function createWebElement (execlib, applib, templatelib) {
     */
     return this.getConfigVal('default_markup');
   };
+
+  WebElement.prototype.removeClassesSet = function () {
+    var elem = this.$element, classestoset;
+    if (!elem) {
+      return;
+    }
+    classestoset = this.getConfigVal('set_classes');
+    if (lib.isArray(classestoset)) {
+      classestoset.forEach(classremovever.bind(null, elem));
+      elem = null;
+    }
+  };
+
+  function classremovever (elem, classname) {
+    elem.removeClass(classname);
+  }
 
   WebElement.prototype.set_actual = function (val) {
     if (!this.$element) {
@@ -1049,7 +1095,7 @@ function createWebElement (execlib, applib, templatelib) {
   };
 
   WebElement.prototype.showElement = function () {
-    this.$element.show(this.actual);
+    this.$element.show();//this.actual);
   };
 
   WebElement.prototype.hide = function () {
@@ -1544,8 +1590,12 @@ function createHashCollectorMixin (lib) {
   function datagetter (data, chld) {
     var fieldname = chld.getConfigVal('fieldname'),
       val;
-    if (!fieldname) {
+    if (lib.isUndef(fieldname)) {
       console.warn('Child', chld.constructor.name, chld.id, 'has no fieldname');
+      return;
+    }
+    if (fieldname === null) {
+      //this chld has no fields to give
       return;
     }
     try {
@@ -1750,6 +1800,7 @@ function createInputHandlerMixin (lib) {
 
   function InputHandlerMixin (options) {
     this.value = options.value;
+    this.valueChanged = this.createBufferableHookCollection();
     this.onInputElementKeyUper = this.onInputElementKeyUp.bind(this);
     this.onInputElementChanger = this.onInputElementChange.bind(this);
   }
@@ -1761,6 +1812,10 @@ function createInputHandlerMixin (lib) {
     }
     this.onInputElementChanger = null;
     this.onInputElementKeyUper = null;
+    if (this.valueChanged) {
+      this.valueChanged.destroy();
+    }
+    this.valueChanged = null;
     this.value = null;
   };
   InputHandlerMixin.prototype.startListeningToInputElement = function () {
@@ -1799,8 +1854,12 @@ function createInputHandlerMixin (lib) {
     return ie.val();
   };
   InputHandlerMixin.prototype.set_value = function (val) {
+    if (this.value === val) {
+      return false;
+    }
     this.value = val;
     this.setTheInputElementValue(val);
+    this.valueChanged.fire(val);
     return true;
   };
   InputHandlerMixin.prototype.get_value = function () {
@@ -2399,7 +2458,9 @@ function createRouterLib (allex) {
     this.element = null;
     this.onDeactivated = null;
     this.onActivated = null;
-    this.router.destroy(); //I will destroy router since there is no one outside which will destroy it ...
+    if (this.router) {
+      this.router.destroy(); //I will destroy router since there is no one outside which will destroy it ...
+    }
     this.router = null;
   };
 
@@ -2444,7 +2505,7 @@ function createRouterLib (allex) {
   RouterMixIn.prototype.__cleanUp = function () {
     this.default_page = null;
     this.page = null;
-    lib.container.destroyAll (this.pagesmap);
+    lib.containerDestroyAll (this.pagesmap);
     this.pagesmap.destroy();
     this.pagesmap = null;
   };
@@ -3487,6 +3548,11 @@ function createTabViewProcessor (allex, routerlib, applib, templatelib) {
       BasicElement.prototype.__cleanUp.call(this);
     };
 
+    TabViewElement.prototype.reinitializeRouter = function () {
+      RouterMixIn.prototype.__cleanUp.call(this);
+      RouterMixIn.call(this);
+    };
+
     TabViewElement.prototype._doInitializeView = function (tabnames, tabs, config, selector){
       var bind_actual = config.bind_actual, tabroute;
       this.default_page = config.default_tab||null;
@@ -3549,10 +3615,10 @@ function createTabViewProcessor (allex, routerlib, applib, templatelib) {
       var refs = [this.elementReferenceStringOf(desc, name+'_tab_view'), config.selector];
       this.elementsOf(desc).push ({
         name : name+'_tab_view',
-        type : 'TabViewElement',
-        options : {
+        type : config.type || 'TabViewElement',
+        options : lib.extend({
           toggle : config.toggle || false
-        }
+        }, config.options)
       });
 
       var tabnames = Object.keys (config.tabs);
