@@ -31,7 +31,7 @@ function createHashDistributorMixin (lib) {
     try {
       chld.set('data', data);
     } catch(e) {
-      console.warn(this.id, 'could not set data on', chld.constructor.name, chld.id);//, e);
+      //console.warn(this.id, 'could not set data on', chld.constructor.name, chld.id);//, e);
     }
   }
 

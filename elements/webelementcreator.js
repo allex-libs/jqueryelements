@@ -37,8 +37,8 @@ function createWebElement (execlib, applib, templatelib) {
       if (this.elementCreatedByMe) {
         this.$element.remove();
       } else {
-        this.$element.remoteAttr('allexid');
-        this.$element.remoteAttr('allextype');
+        this.$element.removeAttr('allexid');
+        this.$element.removeAttr('allextype');
         this.removeClassesSet();
       }
     }
@@ -132,8 +132,12 @@ function createWebElement (execlib, applib, templatelib) {
       }
     }
     this.elementCreatedByMe = true;
+    /*
     this.$element.attr('allexid', this.get('id'));
     this.$element.attr('allextype', this.constructor.name);
+    */
+    appendAttr(this.$element, 'allexid', this.get('id'));
+    appendAttr(this.$element, 'allextype', this.constructor.name);
     classestoset = this.getConfigVal('set_classes');
     if (lib.isArray(classestoset)) {
       elem = this.$element;
@@ -229,7 +233,17 @@ function createWebElement (execlib, applib, templatelib) {
       sibling.after(appendee);
       return true;
     }
-    appender.append(appendee);
+    forcesibling = this.getConfigVal('force_next_sibling');
+    if (forcesibling) {
+      sibling = appender.find(forcesibling);
+      if (!(sibling && sibling[0])) {
+        console.error('on', appender);
+        throw new Error ('force_prev_sibling was defined as "'+forcesibling+'", but it was not found');
+      }
+      sibling.before(appendee);
+      return true;
+    }
+    appender[this.getConfigVal('attach_to_parent')==='prepend' ? 'prepend' : 'append'](appendee);
     return true;
   };
 
@@ -300,7 +314,6 @@ function createWebElement (execlib, applib, templatelib) {
   };
   WebElement.prototype.get_html = function () {
     return this._htmlcontent;
-    return null;
   };
   //text end
   
@@ -572,6 +585,39 @@ function createWebElement (execlib, applib, templatelib) {
       return elem;
     }
     return elem.find(reposition);
+  }
+
+  function attrValueToSet (currattrval, val) {
+    var valtoset;
+    if (lib.isBoolean(currattrval)) {
+      return currattrval+','+val;
+    }
+    if (lib.isNumber(currattrval)) {
+      return currattrval+','+val;
+    }
+    if (lib.isString(currattrval) && currattrval.length>0) {
+      return currattrval+','+val;
+    }
+    return val;
+  }
+  function appendAttr (elem, name, val) {
+    var valtoset = attrValueToSet(elem.attr(name), val);
+    elem.attr(name, attrValueToSet(elem.attr(name), val));
+  }
+
+  function removeAttr (elem, name, val) {
+    var attrs = elem.attr(name), valindex;
+    try {
+      attrs = attrs.split(',');
+    }
+    catch (e) {
+      attrs = [attrs];
+    }
+    valindex = attrs.indexOf(val);
+    if (valindex>=0) {
+      attrs.splice(valindex,1);
+      elem.attr(name, attrs.join(','));
+    }
   }
 
   applib.registerElementType ('WebElement',WebElement);

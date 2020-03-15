@@ -63,84 +63,31 @@ function createCanvas (execlib, applib, templatelib, htmltemplateslib) {
 module.exports = createCanvas;
 
 },{}],3:[function(require,module,exports){
-function createClickable (execlib, applib, templatelib, htmltemplateslib) {
+function createClickable (execlib, applib, templatelib, htmltemplateslib, mymixins) {
   'use strict';
 
   var lib = execlib.lib,
     DomElement = applib.getElementType('DomElement'),
     o = templatelib.override,
-    m = htmltemplateslib;
+    m = htmltemplateslib,
+    ClickableMixin = mymixins.Clickable;
 
   function ClickableElement (id, options) {
     //options.default_markup = options.default_markup || createClickable(options.clickable || {});
     DomElement.call(this, id, options);
-    this.clicked = new lib.HookCollection();
-    this.clickvalue = null;
-    if (options && ('enabled' in options)) {
-      this.set('enabled', options.enabled);
-    }
+    ClickableMixin.call(this, options);
   }
   lib.inherit (ClickableElement, DomElement);
+  ClickableMixin.addMethods(ClickableElement);
   ClickableElement.prototype.__cleanUp = function () {
-    this.clickvalue = null;
-    if (this.clicked) {
-      this.clicked.destroy();
-    }
-    this.clicked = null;
+    ClickableMixin.prototype.destroy.call(this);
     DomElement.prototype.__cleanUp.call(this);
   };
-  ClickableElement.prototype.initializeOnDomElement = function () {
-    this.$element.on('click', this.onElementClicked.bind(this));
-  };
-  ClickableElement.prototype.onElementClicked = function (jqueryevent) {
-    if (!this.get('enabled') && !this.getConfigVal('ignore_enabled')) {
-      return;
-    }
-    this.clicked.fire.call(this.clicked, [jqueryevent, this.clickvalue]);
-  };
   ClickableElement.prototype.set_enabled = function (val) {
-    if (this.isButton()) {
-      return this.setEnabledOnButton(val);
-    }
-    if (this.isAnchor()) {
-      return this.setEnabledOnAnchor(val);
-    }
-    return false;
-  };
-  ClickableElement.prototype.setEnabledOnButton = function (val) {
-    if (!this.$element) {
-      return false;
-    }
-    this.$element.prop('disabled', !val);
-    return true;
-  };
-  ClickableElement.prototype.setEnabledOnAnchor = function (val) {
-    if (!this.setEnabledOnButton(val)) {
-      this.$element.removeClass('disabled');
-      return false;
-    }
-    this.$element.addClass('disabled');
+    return ClickableMixin.prototype.set_enabled.call(this, val);
   };
   ClickableElement.prototype.get_enabled = function () {
-    if (this.isButton()) {
-      return this.getEnabledOnButton();
-    }
-    if (this.isAnchor()) {
-      return this.getEnabledOnAnchor();
-    }
-    return false;
-  };
-  ClickableElement.prototype.getEnabledOnButton = function () {
-    return this.$element && !this.$element.prop('disabled');
-  };
-  ClickableElement.prototype.getEnabledOnAnchor = function () {
-    return this.getEnabledOnButton();
-  };
-  ClickableElement.prototype.isButton = function () {
-    return this.$element && this.$element.is('button');
-  };
-  ClickableElement.prototype.isAnchor = function () {
-    return this.$element && this.$element.is('a');
+    return ClickableMixin.prototype.get_enabled.call(this);
   };
   ClickableElement.prototype.createDefaultMarkup = function (htmltemplatename, options) {
     return DomElement.prototype.createDefaultMarkup.call(this, options.type || 'button', options);
@@ -364,12 +311,13 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
 module.exports = createFileInputElement;
 
 },{}],9:[function(require,module,exports){
-function createFromDataCreator (execlib, applib) {
+function createFromDataCreator (execlib, applib, mixins) {
   'use strict';
 
   var lib = execlib.lib,
     BasicElement = applib.BasicElement,
-    DataAwareElement = applib.getElementType('DataAwareElement');
+    DataAwareElement = applib.getElementType('DataAwareElement'),
+    FromDataCreatorMixin = mixins.FromDataCreator;
 
   function FromDataCreatorElement (id, options) {
     /* need to be more delicate
@@ -383,41 +331,79 @@ function createFromDataCreator (execlib, applib) {
     }
     */
     DataAwareElement.call(this, id, options);
+    FromDataCreatorMixin.call(this);
     this.subElements = [];
   }
   lib.inherit(FromDataCreatorElement, DataAwareElement);
+  FromDataCreatorMixin.addMethods(FromDataCreatorElement);
   FromDataCreatorElement.prototype.__cleanUp = function () {
     if (this.subElements) {
       lib.arryDestroyAll(this.subElements);
     }
     this.subElements = null;
+    FromDataCreatorMixin.prototype.destroy.call(this);
     DataAwareElement.prototype.__cleanUp.call(this);
   };
   FromDataCreatorElement.prototype.set_data = function (data) {
-    if (!lib.isArray(this.subElements)) {
-      return this.super_set_data(data);
-    }
-    lib.arryDestroyAll(this.subElements);
-    this.subElements = [];
+    this._purgeSubElements(data);
     if (lib.isArray(data)) {
       this.createFromArryData(data);
     }
-    this.subElements.forEach(unbuffer);
     return this.super_set_data(data);
   };
-  function unbuffer(subel) {
-    subel.unbufferAllBufferableHookCollections();
-  }
+  /*
+  FromDataCreatorElement.prototype.get_prependdata = function () {
+    return this.data;
+  };
+  */
+  FromDataCreatorElement.prototype.prependData = function (data) {
+    var myprependsubelements = this.getConfigVal('prependsubelements') || false;
+    this.setConfigVal('prependsubelements', true, true);
+    this.set('data', data);
+    this.setConfigVal('prependsubelements', myprependsubelements, true);
+  };
+  /*
+  FromDataCreatorElement.prototype.get_appenddata = function () {
+    return this.data;
+  };
+  */
+  FromDataCreatorElement.prototype.appendData = function (data) {
+    var myprependsubelements = this.getConfigVal('prependsubelements') || false;
+    this.setConfigVal('prependsubelements', false, true);
+    this.set('data', data);
+    this.setConfigVal('prependsubelements', myprependsubelements, true);
+  };
+  FromDataCreatorElement.prototype._purgeSubElements = function (data) {
+    if (data === null || !this.getConfigVal('skip_purge_subelements')) {
+      lib.arryDestroyAll(this.subElements);
+      this.subElements = [];
+    }
+  };
   FromDataCreatorElement.prototype.super_set_data = function (data) {
-    return DataAwareElement.prototype.set_data(data);
+    return DataAwareElement.prototype.set_data.call(this, data);
   };
   FromDataCreatorElement.prototype.createFromArryData = function (data) {
+    if (this.getConfigVal('prependsubelements')) {
+      data = data.slice();
+      data.reverse();
+    }
     data.forEach(this.createFromArryItem.bind(this));
   };
   FromDataCreatorElement.prototype.createFromArryItem = function (item) {
-    var desc = this.createDescriptorFromArryItem(item);
+    var desc = this.createDescriptorFromArryItem(item),
+      testel;
     if (desc) {
+      try {
+        testel = this.getElement(desc.name);
+        if(testel) {
+          testel.set('data', item);
+          return;
+        }
+      } catch(e) {}
       desc.options = desc.options || {};
+      if (this.getConfigVal('prependsubelements')) {
+        desc.options.attach_to_parent = 'prepend';
+      }
       desc.options.data = item;
       BasicElement.createElement(desc, this.addFromDataChild.bind(this));
       return;
@@ -538,7 +524,7 @@ function createImg (execlib, applib, templatelib, htmltemplateslib) {
 module.exports = createImg;
 
 },{}],11:[function(require,module,exports){
-function createElements (execlib, applib, templatelib, htmltemplateslib, mixins) {
+function createElements (execlib, applib, templatelib, htmltemplateslib, mixins, mymixins) {
   'use strict';
 
   var jobs = require('./jobs')(execlib.lib);
@@ -546,14 +532,14 @@ function createElements (execlib, applib, templatelib, htmltemplateslib, mixins)
   require('./webelementcreator')(execlib, applib, templatelib);
   require('./dataawareelementcreator')(execlib, mixins.DataElementMixin, applib);
   require('./dataawarechildcreator')(execlib, mixins.DataElementFollowerMixin, applib);
-  require('./fromdatacreatorcreator')(execlib, applib);
+  require('./fromdatacreatorcreator')(execlib, applib, mymixins);
 
   require('./domelementcreator')(execlib, applib, templatelib, htmltemplateslib);
   require('./divcreator')(execlib, applib, templatelib, htmltemplateslib);
   require('./canvascreator')(execlib, applib, templatelib, htmltemplateslib);
   require('./imgcreator')(execlib, applib, templatelib, htmltemplateslib);
   require('./fileinputcreator')(execlib, applib, templatelib, htmltemplateslib, jobs);
-  require('./clickablecreator')(execlib, applib, templatelib, htmltemplateslib);
+  require('./clickablecreator')(execlib, applib, templatelib, htmltemplateslib, mymixins);
 
   require('./splashcreator')(execlib, applib, templatelib, htmltemplateslib);
 }
@@ -707,8 +693,8 @@ function createWebElement (execlib, applib, templatelib) {
       if (this.elementCreatedByMe) {
         this.$element.remove();
       } else {
-        this.$element.remoteAttr('allexid');
-        this.$element.remoteAttr('allextype');
+        this.$element.removeAttr('allexid');
+        this.$element.removeAttr('allextype');
         this.removeClassesSet();
       }
     }
@@ -802,8 +788,12 @@ function createWebElement (execlib, applib, templatelib) {
       }
     }
     this.elementCreatedByMe = true;
+    /*
     this.$element.attr('allexid', this.get('id'));
     this.$element.attr('allextype', this.constructor.name);
+    */
+    appendAttr(this.$element, 'allexid', this.get('id'));
+    appendAttr(this.$element, 'allextype', this.constructor.name);
     classestoset = this.getConfigVal('set_classes');
     if (lib.isArray(classestoset)) {
       elem = this.$element;
@@ -899,7 +889,17 @@ function createWebElement (execlib, applib, templatelib) {
       sibling.after(appendee);
       return true;
     }
-    appender.append(appendee);
+    forcesibling = this.getConfigVal('force_next_sibling');
+    if (forcesibling) {
+      sibling = appender.find(forcesibling);
+      if (!(sibling && sibling[0])) {
+        console.error('on', appender);
+        throw new Error ('force_prev_sibling was defined as "'+forcesibling+'", but it was not found');
+      }
+      sibling.before(appendee);
+      return true;
+    }
+    appender[this.getConfigVal('attach_to_parent')==='prepend' ? 'prepend' : 'append'](appendee);
     return true;
   };
 
@@ -970,7 +970,6 @@ function createWebElement (execlib, applib, templatelib) {
   };
   WebElement.prototype.get_html = function () {
     return this._htmlcontent;
-    return null;
   };
   //text end
   
@@ -1242,6 +1241,39 @@ function createWebElement (execlib, applib, templatelib) {
       return elem;
     }
     return elem.find(reposition);
+  }
+
+  function attrValueToSet (currattrval, val) {
+    var valtoset;
+    if (lib.isBoolean(currattrval)) {
+      return currattrval+','+val;
+    }
+    if (lib.isNumber(currattrval)) {
+      return currattrval+','+val;
+    }
+    if (lib.isString(currattrval) && currattrval.length>0) {
+      return currattrval+','+val;
+    }
+    return val;
+  }
+  function appendAttr (elem, name, val) {
+    var valtoset = attrValueToSet(elem.attr(name), val);
+    elem.attr(name, attrValueToSet(elem.attr(name), val));
+  }
+
+  function removeAttr (elem, name, val) {
+    var attrs = elem.attr(name), valindex;
+    try {
+      attrs = attrs.split(',');
+    }
+    catch (e) {
+      attrs = [attrs];
+    }
+    valindex = attrs.indexOf(val);
+    if (valindex>=0) {
+      attrs.splice(valindex,1);
+      elem.attr(name, attrs.join(','));
+    }
   }
 
   applib.registerElementType ('WebElement',WebElement);
@@ -1545,7 +1577,7 @@ function createHashCollectorMixin (lib) {
   HashCollectorMixin.prototype.recheckChildren = function () {
     var vldfromchildren, valsfromchildren;
     vldfromchildren = getValidityFromChildren.call(this);
-    console.log('finally', this.id, 'valid', vldfromchildren, 'with', this.mydata);
+    //console.log('finally', this.id, 'valid', vldfromchildren, 'with', this.mydata);
     this.set('valid', vldfromchildren);
     valsfromchildren = getValuesFromChildren.call(this);
     /*
@@ -1591,7 +1623,7 @@ function createHashCollectorMixin (lib) {
     var fieldname = chld.getConfigVal('fieldname'),
       val;
     if (lib.isUndef(fieldname)) {
-      console.warn('Child', chld.constructor.name, chld.id, 'has no fieldname');
+      //console.warn('Child', chld.constructor.name, chld.id, 'has no fieldname');
       return;
     }
     if (fieldname === null) {
@@ -1612,8 +1644,10 @@ function createHashCollectorMixin (lib) {
       }
       writetodata(data, val, fieldname);
     } catch (e) {
+      /*
       console.warn('Could not get "value" from', chld);
       console.warn(e);
+      */
       return;
     }
   }
@@ -1675,7 +1709,7 @@ function createHashCollectorMixin (lib) {
     ret = {valid: null, anypristine: false};
     _r = ret;
     this.__children.traverse(validandpristinegetter.bind(this, _r));
-    console.log(this.id, 'valid', ret.valid, 'any pristine', ret.anypristine);
+    //console.log(this.id, 'valid', ret.valid, 'any pristine', ret.anypristine);
     _r = null;
     if (ret.anypristine) {
       ret = void 0;
@@ -1703,7 +1737,7 @@ function createHashCollectorMixin (lib) {
     try {
       pristine = chld.get('pristine');
       if (pristine) {
-        console.log(chld.id, 'is pristine');
+        //console.log(chld.id, 'is pristine');
         validobj.anypristine = true;
         return;
       } else {
@@ -1716,7 +1750,7 @@ function createHashCollectorMixin (lib) {
       valid = chld.get('valid');
       //console.log('"valid" of', chld, 'is', valid);
       if (!valid) {
-        console.log(chld.id, 'is not valid', valid);
+        //console.log(chld.id, 'is not valid', valid);
         validobj.valid = lib.isVal(valid) ? false : null;
         return;
       }
@@ -1765,7 +1799,7 @@ function createHashDistributorMixin (lib) {
     try {
       chld.set('data', data);
     } catch(e) {
-      console.warn(this.id, 'could not set data on', chld.constructor.name, chld.id);//, e);
+      //console.warn(this.id, 'could not set data on', chld.constructor.name, chld.id);//, e);
     }
   }
 
@@ -2405,7 +2439,10 @@ function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib) 
 
   var routerlib = require('./misc/router')(execlib),
     jQueryCreate = require('./jquerycreatecreator')(execlib, templatelib),
+    mixins = require('./mixins')(execlib),
     formRenderingMixins = require('./formrenderingmixins')(execlib);
+
+  mixins.form = formRenderingMixins;
 
   require('./handlers')(execlib, applib, linkinglib);
 
@@ -2413,7 +2450,7 @@ function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib) 
   require('./resources/urlgeneratorcreator')(execlib, applib);
   require('./resources/throbbercreator')(execlib, applib);
 
-  require('./elements')(execlib, applib, templatelib, htmltemplateslib, applib.mixins);
+  require('./elements')(execlib, applib, templatelib, htmltemplateslib, applib.mixins, mixins);
 
   require('./modifiers/selectorcreator')(execlib, applib);
   require('./modifiers/routecontrollercreator')(execlib, applib);
@@ -2430,15 +2467,13 @@ function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib) 
     RouterMixin: routerlib.RouterMixin,
     Router: routerlib.Router,
     RoleRouter: routerlib.RoleRouter,
-    mixins: {
-      form: formRenderingMixins
-    }
+    mixins: mixins
   };
 }
 
 module.exports = createLib;
 
-},{"./elements":11,"./formrenderingmixins":21,"./handlers":26,"./jquerycreatecreator":27,"./misc/router":29,"./modifiers/routecontrollercreator":30,"./modifiers/selectorcreator":31,"./preprocessors/dataviewcreator":32,"./preprocessors/keyboardcreator":33,"./preprocessors/logoutdeactivatorcreator":34,"./preprocessors/pipelinecreator":35,"./preprocessors/roleroutercreator":36,"./preprocessors/tabviewcreator":37,"./resources/fontloadercreator":38,"./resources/throbbercreator":39,"./resources/urlgeneratorcreator":40}],29:[function(require,module,exports){
+},{"./elements":11,"./formrenderingmixins":21,"./handlers":26,"./jquerycreatecreator":27,"./misc/router":29,"./mixins":32,"./modifiers/routecontrollercreator":35,"./modifiers/selectorcreator":36,"./preprocessors/dataviewcreator":37,"./preprocessors/keyboardcreator":38,"./preprocessors/logoutdeactivatorcreator":39,"./preprocessors/pipelinecreator":40,"./preprocessors/roleroutercreator":41,"./preprocessors/tabviewcreator":42,"./resources/fontloadercreator":43,"./resources/throbbercreator":44,"./resources/urlgeneratorcreator":45}],29:[function(require,module,exports){
 function createRouterLib (allex) {
   'use strict';
 
@@ -2684,6 +2719,340 @@ function createRouterLib (allex) {
 module.exports = createRouterLib;
 
 },{}],30:[function(require,module,exports){
+function createClickableMixin (lib, mylib) {
+  'use strict';
+
+  function ClickableMixin (options) {
+    this.clicked = new lib.HookCollection();
+    this.clickvalue = null;
+    if (options && ('enabled' in options)) {
+      this.set('enabled', options.enabled);
+    }
+  }
+  ClickableMixin.prototype.destroy = function () {
+    this.clickvalue = null;
+    if (this.clicked) {
+      this.clicked.destroy();
+    }
+    this.clicked = null;
+  };
+  ClickableMixin.prototype.initClickable = function () {
+    this.$element.on('click', this.onElementClicked.bind(this));
+  };
+  ClickableMixin.prototype.onElementClicked = function (jqueryevent) {
+    if (!this.clickShouldHappen()) {
+      return;
+    }
+    this.clicked.fire.call(this.clicked, [jqueryevent, this.clickvalue]);
+  };
+  ClickableMixin.prototype.clickShouldHappen = function () {
+    if (!this.get('enabled') && !this.getConfigVal('ignore_enabled')) {
+      return false;
+    }
+    return true;
+  };
+  ClickableMixin.prototype.setEnabledOnButtonFromClickable = function (val) {
+    if (!this.$element) {
+      return false;
+    }
+    this.$element.prop('disabled', !val);
+    return true;
+  };
+  ClickableMixin.prototype.setEnabledOnAnchorFromClickable = function (val) {
+    if (!this.setEnabledOnButtonFromClickable(val)) {
+      this.$element.removeClass('disabled');
+      return false;
+    }
+    this.$element.addClass('disabled');
+  };
+  ClickableMixin.prototype.getEnabledOnButtonFromClickable = function () {
+    return this.$element && !this.$element.prop('disabled');
+  };
+  ClickableMixin.prototype.getEnabledOnAnchorFromClickable = function () {
+    return this.getEnabledOnButtonFromClickable();
+  };
+  ClickableMixin.prototype.isButtonFromClickable = function () {
+    return this.$element && this.$element.is('button');
+  };
+  ClickableMixin.prototype.isAnchorFromClickable = function () {
+    return this.$element && this.$element.is('a');
+  };
+
+  //not addMethod-ed
+  ClickableMixin.prototype.set_enabled = function (val) {
+    if (this.isButtonFromClickable()) {
+      return this.setEnabledOnButtonFromClickable(val);
+    }
+    if (this.isAnchorFromClickable()) {
+      return this.setEnabledOnAnchorFromClickable(val);
+    }
+    return false;
+  };
+  ClickableMixin.prototype.get_enabled = function () {
+    if (this.isButtonFromClickable()) {
+      return this.getEnabledOnButtonFromClickable();
+    }
+    if (this.isAnchorFromClickable()) {
+      return this.getEnabledOnAnchorFromClickable();
+    }
+    return false;
+  };
+
+  ClickableMixin.addMethods = function (klass) {
+    lib.inheritMethods(klass, ClickableMixin
+      ,'onElementClicked'
+      ,'initClickable'
+      ,'clickShouldHappen'
+      ,'setEnabledOnButtonFromClickable'
+      ,'setEnabledOnAnchorFromClickable'
+      ,'getEnabledOnButtonFromClickable'
+      ,'getEnabledOnAnchorFromClickable'
+      ,'isButtonFromClickable'
+      ,'isAnchorFromClickable'
+    );
+    klass.prototype.postInitializationMethodNames =
+      klass.prototype.postInitializationMethodNames.concat('initClickable');
+  };
+
+  mylib.Clickable = ClickableMixin;
+}
+module.exports = createClickableMixin;
+
+},{}],31:[function(require,module,exports){
+function createFromDataCreatorMixin (lib, mylib) {
+  'use strict';
+
+  function FromDataCreatorMixin () {
+  }
+  FromDataCreatorMixin.prototype.destroy = function () {
+  };
+
+  FromDataCreatorMixin.addMethods = function (klass) {
+  };
+
+  mylib.FromDataCreator = FromDataCreatorMixin;
+}
+module.exports = createFromDataCreatorMixin;
+
+},{}],32:[function(require,module,exports){
+function createMixins (execlib) {
+  'use strict';
+
+  var lib = execlib.lib;
+  var ret = {};
+
+  require('./clickablecreator')(lib, ret);
+  require('./siblingmanipulatorcreator')(lib, ret);
+  require('./scrollablecreator')(lib, ret);
+  require('./fromdatacreator')(lib, ret);
+
+  return ret;
+}
+module.exports = createMixins;
+
+},{"./clickablecreator":30,"./fromdatacreator":31,"./scrollablecreator":33,"./siblingmanipulatorcreator":34}],33:[function(require,module,exports){
+function createScrollableMixin (lib, mylib) {
+  'use strict';
+
+  function ScrollableMixin () {
+    this.scroller = this.onElementScrolled.bind(this);
+    this.lastScrollPos = null;
+  }
+  ScrollableMixin.prototype.destroy = function () {
+    if (this.scroller && this.$element) {
+      this.$element.off('scroll', this.scroller);
+    }
+    this.lastScrollPos = null;
+    this.scroller = null;
+  };
+  ScrollableMixin.prototype.startListeningToElementScroll = function () {
+    if (!this.$element) {
+      return;
+    }
+    this.lastScrollPos = this.$element.scrollTop;
+    this.$element.on('scroll', this.scroller);
+  };
+  ScrollableMixin.prototype.onElementScrolled = function () {
+    var prevpos = this.lastScrollPos,
+      sc = elementScrolledChecker.call(this),
+      down;
+    if (!sc) {
+      return;
+    }
+    this.lastScrollPos = sc.pos;
+    down = this.lastScrollPos > prevpos;
+    if (sc.atTop && !down) {
+      this.onElementScrolledToTop();
+    }
+    if (sc.atBottom && down) {
+      this.onElementScrolledToBottom();
+    }
+  };
+  ScrollableMixin.prototype.elementIsScrolledToTop = function (tolerance) {
+    var sc = elementScrolledChecker.call(this, tolerance);
+    return (sc && sc.atTop);
+  };
+  ScrollableMixin.prototype.elementIsScrolledToBottom = function (tolerance) {
+    var sc = elementScrolledChecker.call(this, tolerance);
+    return (sc && sc.atBottom);
+  };
+  ScrollableMixin.prototype.onElementScrolledToTop = lib.dummyFunc;
+  ScrollableMixin.prototype.onElementScrolledToBottom = lib.dummyFunc;
+  ScrollableMixin.prototype.scrollElementToTop = function () {
+    if (!this.$element) {
+      return;
+    }
+    this.$element.scrollTop(0);
+  };
+  ScrollableMixin.prototype.scrollElementToBottom = function () {
+    if (!this.$element) {
+      return;
+    }
+    this.$element.scrollTop(this.$element[0].scrollHeight);
+  };
+  ScrollableMixin.prototype.elementIsWithinTheScrollableArea = function (el, tolerance) {
+    var st, ret, scrollTop, innerHeight, eltop, elheight;
+    st = this.getConfigVal('scroll_tolerance');
+    tolerance = lib.isNumber(tolerance) ? tolerance : (lib.isNumber(st) ? st : 0);
+    scrollTop = this.$element.scrollTop();
+    innerHeight = this.$element.innerHeight();
+    eltop = el.offset().top;
+    elheight = el.height();
+    if (eltop>=scrollTop && eltop+elheight<=scrollTop+innerHeight) {
+      return true;
+    }
+    return false;
+  };
+
+  //static
+  function elementScrolledChecker (tolerance) {
+    var ret, scrollTop, innerHeight, scrollHeight, st;
+    st = this.getConfigVal('scroll_tolerance');
+    tolerance = lib.isNumber(tolerance) ? tolerance : (lib.isNumber(st) ? st : 0);
+    ret = {
+      pos: 0,
+      atTop: false,
+      atBottom: false
+    };
+    if (!this.$element) {
+      return ret;
+    }
+    scrollTop = this.$element.scrollTop();
+    ret.pos = scrollTop;
+    if (scrollTop <= 0+tolerance) {
+      ret.atTop = true;
+    }
+    innerHeight = this.$element.innerHeight();
+    scrollHeight = this.$element[0].scrollHeight;
+    /*
+    console.log('scrollTop', scrollTop);
+    console.log('innerHeight', innerHeight);
+    console.log('scrollHeight', scrollHeight);
+    */
+    if (scrollTop+innerHeight+tolerance >= scrollHeight) {
+      ret.atBottom = true;
+    }
+    return ret;
+  }
+
+  ScrollableMixin.addMethods = function (klass) {
+    lib.inheritMethods(klass, ScrollableMixin
+      ,'startListeningToElementScroll'
+      ,'onElementScrolled'
+      ,'onElementScrolledToTop'
+      ,'onElementScrolledToBottom'
+      ,'elementIsScrolledToTop'
+      ,'elementIsScrolledToBottom'
+      ,'scrollElementToTop'
+      ,'scrollElementToBottom'
+      ,'elementIsWithinTheScrollableArea'
+    );
+    klass.prototype.postInitializationMethodNames = klass.prototype.postInitializationMethodNames.concat('startListeningToElementScroll');
+  };
+
+  mylib.Scrollable = ScrollableMixin;
+}
+module.exports = createScrollableMixin;
+
+},{}],34:[function(require,module,exports){
+function createSiblingManipulatorMutex (lib, mylib) {
+  'use strict';
+
+  function jQuerySiblingManipulatorMutex () {
+    this.affected = null;
+  }
+  jQuerySiblingManipulatorMutex.prototype.destroy = function () {
+    this.affected = null;
+  };
+  jQuerySiblingManipulatorMutex.prototype.initializejQuerySiblingManipulator = function () {
+  };
+  jQuerySiblingManipulatorMutex.prototype.manipulatejQuerySiblings = function (actual) {
+    var shouldbeformanip, manip, affected;
+    if (this.actual === actual) {
+      return;
+    }
+    if (!this.$element) {
+      return;
+    }
+    shouldbeformanip = actual ? ':visible' : ':hidden';
+    manip = actual ? 'hide' : 'show';
+    if (actual) {
+      affected = [];
+      this.findSiblingsForManipulation().each(deactivator.bind(null, affected, shouldbeformanip, manip));
+      this.affected = affected;
+      shouldbeformanip = null;
+      manip = null;
+      affected = null;
+      return;
+    }
+    if (!lib.isArray(this.affected)) {
+      return;
+    }
+    this.affected.forEach(activator.bind(null, shouldbeformanip, manip));
+    shouldbeformanip = null;
+    manip = null;
+    this.affected = null;
+  };
+  jQuerySiblingManipulatorMutex.prototype.findSiblingsForManipulation = function () {
+    var siblings_finder = this.getConfigVal('siblings_finder');
+    if (!siblings_finder) {
+      return this.$element.siblings();
+    }
+    return this.$element.siblings(siblings_finder);
+  };
+
+  function deactivator (affected, shouldbeformanip, manip, elindex, el) {
+    el = jQuery(el);
+    if (el.is(shouldbeformanip)) {
+      affected.push(el);
+      el[manip]();
+      return;
+    }
+  }
+
+  function activator (shouldbeformanip, manip, el) {
+    if (!el) {
+      return;
+    }
+    if (el.is(shouldbeformanip)) {
+      el[manip]();
+    }
+  }
+
+  jQuerySiblingManipulatorMutex.addMethods = function (klass) {
+    lib.inheritMethods(klass, jQuerySiblingManipulatorMutex
+      ,'initializejQuerySiblingManipulator'
+      ,'findSiblingsForManipulation'
+    );
+    klass.prototype.postInitializationMethodNames = 
+      klass.prototype.postInitializationMethodNames.concat('initializejQuerySiblingManipulator');
+  };
+
+  mylib.jQuerySiblingManipulator = jQuerySiblingManipulatorMutex;
+}
+module.exports = createSiblingManipulatorMutex;
+
+},{}],35:[function(require,module,exports){
 function createRouteController (allex, applib) {
   'use strict';
 
@@ -2711,7 +3080,7 @@ function createRouteController (allex, applib) {
 
 module.exports = createRouteController;
 
-},{}],31:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 function createSelectorModifier (allex, applib) {
   'use strict';
 
@@ -2771,7 +3140,7 @@ function createSelectorModifier (allex, applib) {
 
 module.exports = createSelectorModifier;
 
-},{}],32:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 function createDataViewProcessor (allex, applib) {
   'use strict';
 
@@ -2856,7 +3225,7 @@ function createDataViewProcessor (allex, applib) {
 
 module.exports = createDataViewProcessor;
 
-},{}],33:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 function createKeyboardProcessor (allex, applib) {
   'use strict';
 
@@ -2912,7 +3281,7 @@ function createKeyboardProcessor (allex, applib) {
 
 module.exports = createKeyboardProcessor;
 
-},{}],34:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 function createLogoutDeactivatorProcessor (allex, applib) {
   'use strict';
   var lib = allex.lib,
@@ -2999,7 +3368,7 @@ function createLogoutDeactivatorProcessor (allex, applib) {
 
 module.exports = createLogoutDeactivatorProcessor;
 
-},{}],35:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 function createPipelineProcessor (allex, applib) {
   'use strict';
   var lib = allex.lib,
@@ -3363,7 +3732,7 @@ function createPipelineProcessor (allex, applib) {
 module.exports = createPipelineProcessor;
 
 
-},{}],36:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 function createRoleRouterPreprocessor (allex, routerlib, applib) {
   'use strict';
   var lib = allex.lib,
@@ -3528,7 +3897,7 @@ function createRoleRouterPreprocessor (allex, routerlib, applib) {
 
 module.exports = createRoleRouterPreprocessor;
 
-},{}],37:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 function createTabViewProcessor (allex, routerlib, applib, templatelib) {
   'use strict';
   var lib = allex.lib,
@@ -3693,7 +4062,7 @@ function createTabViewProcessor (allex, routerlib, applib, templatelib) {
 
 module.exports = createTabViewProcessor;
 
-},{}],38:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 function createFontLoader(allex, applib, $) {
   'use strict';
 
@@ -3751,7 +4120,7 @@ function createFontLoader(allex, applib, $) {
 
 module.exports = createFontLoader;
 
-},{}],39:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 function createThrobberResource (allex, applib) {
   'use strict';
 
@@ -3835,7 +4204,7 @@ function createThrobberResource (allex, applib) {
 
 module.exports = createThrobberResource;
 
-},{}],40:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 function createURLGeneratorResource (execlib, applib) {
   var lib = execlib.lib,
   BasicResourceLoader = applib.BasicResourceLoader,

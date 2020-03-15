@@ -55,7 +55,7 @@ function createHashCollectorMixin (lib) {
   HashCollectorMixin.prototype.recheckChildren = function () {
     var vldfromchildren, valsfromchildren;
     vldfromchildren = getValidityFromChildren.call(this);
-    console.log('finally', this.id, 'valid', vldfromchildren, 'with', this.mydata);
+    //console.log('finally', this.id, 'valid', vldfromchildren, 'with', this.mydata);
     this.set('valid', vldfromchildren);
     valsfromchildren = getValuesFromChildren.call(this);
     /*
@@ -101,7 +101,7 @@ function createHashCollectorMixin (lib) {
     var fieldname = chld.getConfigVal('fieldname'),
       val;
     if (lib.isUndef(fieldname)) {
-      console.warn('Child', chld.constructor.name, chld.id, 'has no fieldname');
+      //console.warn('Child', chld.constructor.name, chld.id, 'has no fieldname');
       return;
     }
     if (fieldname === null) {
@@ -122,8 +122,10 @@ function createHashCollectorMixin (lib) {
       }
       writetodata(data, val, fieldname);
     } catch (e) {
+      /*
       console.warn('Could not get "value" from', chld);
       console.warn(e);
+      */
       return;
     }
   }
@@ -185,7 +187,7 @@ function createHashCollectorMixin (lib) {
     ret = {valid: null, anypristine: false};
     _r = ret;
     this.__children.traverse(validandpristinegetter.bind(this, _r));
-    console.log(this.id, 'valid', ret.valid, 'any pristine', ret.anypristine);
+    //console.log(this.id, 'valid', ret.valid, 'any pristine', ret.anypristine);
     _r = null;
     if (ret.anypristine) {
       ret = void 0;
@@ -213,7 +215,7 @@ function createHashCollectorMixin (lib) {
     try {
       pristine = chld.get('pristine');
       if (pristine) {
-        console.log(chld.id, 'is pristine');
+        //console.log(chld.id, 'is pristine');
         validobj.anypristine = true;
         return;
       } else {
@@ -226,7 +228,7 @@ function createHashCollectorMixin (lib) {
       valid = chld.get('valid');
       //console.log('"valid" of', chld, 'is', valid);
       if (!valid) {
-        console.log(chld.id, 'is not valid', valid);
+        //console.log(chld.id, 'is not valid', valid);
         validobj.valid = lib.isVal(valid) ? false : null;
         return;
       }
