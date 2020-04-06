@@ -378,11 +378,17 @@ function createWebElement (execlib, applib, templatelib) {
 
   WebElement.prototype.onUnloaded = function () {
     BasicElement.prototype.onUnloaded.call(this);
+    if (this.getConfigVal('actualnotvisual')) {
+      return;
+    }
     this.hide();
   };
 
   WebElement.prototype.onLoaded = function () {
     BasicElement.prototype.onLoaded.call(this);
+    if (this.getConfigVal('actualnotvisual')) {
+      return;
+    }
     if (this.get('actual')) {
       this.show();
     }
