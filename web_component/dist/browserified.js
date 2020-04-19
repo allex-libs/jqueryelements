@@ -114,7 +114,7 @@ function createDataAwareChildElement (execlib, DataElementFollowerMixin, applib)
   DataElementFollowerMixin.addMethods (DataAwareChildElement);
 
   DataAwareChildElement.prototype.__cleanUp = function () {
-    DataElementFollowerMixin.prototype.__cleanUp.call(this);
+    DataElementFollowerMixin.prototype.destroy.call(this);
     WebElement.prototype.__cleanUp.call(this);
   };
 
@@ -2479,7 +2479,7 @@ function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib) 
 
 module.exports = createLib;
 
-},{"./elements":11,"./formrenderingmixins":21,"./handlers":26,"./jquerycreatecreator":27,"./misc/router":29,"./mixins":32,"./modifiers/routecontrollercreator":35,"./modifiers/selectorcreator":36,"./preprocessors/dataviewcreator":37,"./preprocessors/keyboardcreator":38,"./preprocessors/logoutdeactivatorcreator":39,"./preprocessors/pipelinecreator":40,"./preprocessors/roleroutercreator":41,"./preprocessors/tabviewcreator":42,"./resources/fontloadercreator":43,"./resources/throbbercreator":44,"./resources/urlgeneratorcreator":45}],29:[function(require,module,exports){
+},{"./elements":11,"./formrenderingmixins":21,"./handlers":26,"./jquerycreatecreator":27,"./misc/router":29,"./mixins":32,"./modifiers/routecontrollercreator":36,"./modifiers/selectorcreator":37,"./preprocessors/dataviewcreator":38,"./preprocessors/keyboardcreator":39,"./preprocessors/logoutdeactivatorcreator":40,"./preprocessors/pipelinecreator":41,"./preprocessors/roleroutercreator":42,"./preprocessors/tabviewcreator":43,"./resources/fontloadercreator":44,"./resources/throbbercreator":45,"./resources/urlgeneratorcreator":46}],29:[function(require,module,exports){
 function createRouterLib (allex) {
   'use strict';
 
@@ -2851,23 +2851,28 @@ function createMixins (execlib) {
   require('./siblingmanipulatorcreator')(lib, ret);
   require('./scrollablecreator')(lib, ret);
   require('./fromdatacreator')(lib, ret);
+  require('./searchablecreator')(lib, ret);
 
   return ret;
 }
 module.exports = createMixins;
 
-},{"./clickablecreator":30,"./fromdatacreator":31,"./scrollablecreator":33,"./siblingmanipulatorcreator":34}],33:[function(require,module,exports){
+},{"./clickablecreator":30,"./fromdatacreator":31,"./scrollablecreator":33,"./searchablecreator":34,"./siblingmanipulatorcreator":35}],33:[function(require,module,exports){
 function createScrollableMixin (lib, mylib) {
   'use strict';
 
   function ScrollableMixin () {
     this.scroller = this.onElementScrolled.bind(this);
     this.lastScrollPos = null;
+    this.lastElementHeight = null;
+    this.lastBodyHeight = null;
   }
   ScrollableMixin.prototype.destroy = function () {
     if (this.scroller && this.$element) {
       this.$element.off('scroll', this.scroller);
     }
+    this.lastBodyHeight = null;
+    this.lastElementHeight = null;
     this.lastScrollPos = null;
     this.scroller = null;
   };
@@ -2876,7 +2881,15 @@ function createScrollableMixin (lib, mylib) {
       return;
     }
     this.lastScrollPos = this.$element.scrollTop;
+    this.lastElementHeight = this.$element.height();
+    this.lastBodyHeight = $('body').height();
     this.$element.on('scroll', this.scroller);
+    $(window).resize(this.scrollBottomIfSmallerHeight.bind(this)).resize();
+    /*
+		$(window).resize(function () {
+      $('.Messages').scrollTop(9999999999);
+	  }).resize();
+    */
   };
   ScrollableMixin.prototype.onElementScrolled = function () {
     var prevpos = this.lastScrollPos,
@@ -2916,6 +2929,27 @@ function createScrollableMixin (lib, mylib) {
     }
     this.$element.scrollTop(this.$element[0].scrollHeight);
   };
+  ScrollableMixin.prototype.scrollBottomIfSmallerHeight = function () {
+    //console.log('LAST HEIGHT',this.lastElementHeight,'NEW HEIGHT', this.$element.height());
+    //initially element height is 0 or negative depending on margin so we use body
+    if (this.lastElementHeight <= 0){
+      if (this.lastBodyHeight > $('body').height()){
+        this.scrollElementToBottomUnknown();
+      }
+    }else{
+      if (this.lastElementHeight > this.$element.height()){
+        this.scrollElementToBottomUnknown();
+      }
+    }
+    this.lastElementHeight = this.$element.height();
+    this.lastBodyHeight = $('body').height();
+  };
+  ScrollableMixin.prototype.scrollElementToBottomUnknown = function () {
+    if (!this.$element) {
+      return;
+    }
+    this.$element.scrollTop(9999999999);
+  }
   ScrollableMixin.prototype.elementIsWithinTheScrollableArea = function (el, tolerance) {
     var st, ret, scrollTop, innerHeight, eltop, elheight;
     st = this.getConfigVal('scroll_tolerance');
@@ -2971,6 +3005,8 @@ function createScrollableMixin (lib, mylib) {
       ,'elementIsScrolledToBottom'
       ,'scrollElementToTop'
       ,'scrollElementToBottom'
+      ,'scrollBottomIfSmallerHeight'
+      ,'scrollElementToBottomUnknown'
       ,'elementIsWithinTheScrollableArea'
     );
     klass.prototype.postInitializationMethodNames = klass.prototype.postInitializationMethodNames.concat('startListeningToElementScroll');
@@ -2981,6 +3017,45 @@ function createScrollableMixin (lib, mylib) {
 module.exports = createScrollableMixin;
 
 },{}],34:[function(require,module,exports){
+function createSearchableMixin (lib, mylib) {
+  'use strict';
+
+  function SearchableMixin () {
+    this.onsearchchanger = this.onSearchInputChange.bind(this);
+    this.onsearchfocuser = this.onSearchFocus.bind(this);
+    this.search = null;
+  }
+  SearchableMixin.prototype.destroy = function () {
+    if (this.search && this.onsearchchanger && this.onsearchfocuser) {
+      this.search.off('keyup', this.onsearchchanger);
+      this.search.off('focus', this.onsearchfocuser);
+    }
+    this.search = null;
+    this.onsearchfocuser = null;
+    this.onsearchchanger = null;
+  };
+  SearchableMixin.prototype.init = function () {
+    this.search = this.$element.find(this.getConfigVal('search_input_finder'));
+    this.search.on('keyup', this.onsearchchanger);
+    this.search.on('focus', this.onsearchfocuser);
+  };
+  SearchableMixin.prototype.onSearchInputChange = function () {
+    if (!this.search) {
+      return;
+    }
+    this.filterOnSearchInputValue(this.search.val());
+  };
+  SearchableMixin.addMethods = function (klass) {
+    lib.inheritMethods(klass, SearchableMixin
+      ,'onSearchInputChange'
+    );
+  };
+
+  mylib.Searchable = SearchableMixin;
+}
+module.exports = createSearchableMixin;
+
+},{}],35:[function(require,module,exports){
 function createSiblingManipulatorMutex (lib, mylib) {
   'use strict';
 
@@ -3058,7 +3133,7 @@ function createSiblingManipulatorMutex (lib, mylib) {
 }
 module.exports = createSiblingManipulatorMutex;
 
-},{}],35:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 function createRouteController (allex, applib) {
   'use strict';
 
@@ -3086,7 +3161,7 @@ function createRouteController (allex, applib) {
 
 module.exports = createRouteController;
 
-},{}],36:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 function createSelectorModifier (allex, applib) {
   'use strict';
 
@@ -3146,7 +3221,7 @@ function createSelectorModifier (allex, applib) {
 
 module.exports = createSelectorModifier;
 
-},{}],37:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 function createDataViewProcessor (allex, applib) {
   'use strict';
 
@@ -3231,7 +3306,7 @@ function createDataViewProcessor (allex, applib) {
 
 module.exports = createDataViewProcessor;
 
-},{}],38:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 function createKeyboardProcessor (allex, applib) {
   'use strict';
 
@@ -3287,7 +3362,7 @@ function createKeyboardProcessor (allex, applib) {
 
 module.exports = createKeyboardProcessor;
 
-},{}],39:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 function createLogoutDeactivatorProcessor (allex, applib) {
   'use strict';
   var lib = allex.lib,
@@ -3374,7 +3449,7 @@ function createLogoutDeactivatorProcessor (allex, applib) {
 
 module.exports = createLogoutDeactivatorProcessor;
 
-},{}],40:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 function createPipelineProcessor (allex, applib) {
   'use strict';
   var lib = allex.lib,
@@ -3738,7 +3813,7 @@ function createPipelineProcessor (allex, applib) {
 module.exports = createPipelineProcessor;
 
 
-},{}],41:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 function createRoleRouterPreprocessor (allex, routerlib, applib) {
   'use strict';
   var lib = allex.lib,
@@ -3903,7 +3978,7 @@ function createRoleRouterPreprocessor (allex, routerlib, applib) {
 
 module.exports = createRoleRouterPreprocessor;
 
-},{}],42:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 function createTabViewProcessor (allex, routerlib, applib, templatelib) {
   'use strict';
   var lib = allex.lib,
@@ -4068,7 +4143,7 @@ function createTabViewProcessor (allex, routerlib, applib, templatelib) {
 
 module.exports = createTabViewProcessor;
 
-},{}],43:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 function createFontLoader(allex, applib, $) {
   'use strict';
 
@@ -4126,7 +4201,7 @@ function createFontLoader(allex, applib, $) {
 
 module.exports = createFontLoader;
 
-},{}],44:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 function createThrobberResource (allex, applib) {
   'use strict';
 
@@ -4210,7 +4285,7 @@ function createThrobberResource (allex, applib) {
 
 module.exports = createThrobberResource;
 
-},{}],45:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 function createURLGeneratorResource (execlib, applib) {
   var lib = execlib.lib,
   BasicResourceLoader = applib.BasicResourceLoader,

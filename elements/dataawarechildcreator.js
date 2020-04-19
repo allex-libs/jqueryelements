@@ -12,7 +12,7 @@ function createDataAwareChildElement (execlib, DataElementFollowerMixin, applib)
   DataElementFollowerMixin.addMethods (DataAwareChildElement);
 
   DataAwareChildElement.prototype.__cleanUp = function () {
-    DataElementFollowerMixin.prototype.__cleanUp.call(this);
+    DataElementFollowerMixin.prototype.destroy.call(this);
     WebElement.prototype.__cleanUp.call(this);
   };
 

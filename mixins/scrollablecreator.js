@@ -4,11 +4,15 @@ function createScrollableMixin (lib, mylib) {
   function ScrollableMixin () {
     this.scroller = this.onElementScrolled.bind(this);
     this.lastScrollPos = null;
+    this.lastElementHeight = null;
+    this.lastBodyHeight = null;
   }
   ScrollableMixin.prototype.destroy = function () {
     if (this.scroller && this.$element) {
       this.$element.off('scroll', this.scroller);
     }
+    this.lastBodyHeight = null;
+    this.lastElementHeight = null;
     this.lastScrollPos = null;
     this.scroller = null;
   };
@@ -17,7 +21,15 @@ function createScrollableMixin (lib, mylib) {
       return;
     }
     this.lastScrollPos = this.$element.scrollTop;
+    this.lastElementHeight = this.$element.height();
+    this.lastBodyHeight = $('body').height();
     this.$element.on('scroll', this.scroller);
+    $(window).resize(this.scrollBottomIfSmallerHeight.bind(this)).resize();
+    /*
+		$(window).resize(function () {
+      $('.Messages').scrollTop(9999999999);
+	  }).resize();
+    */
   };
   ScrollableMixin.prototype.onElementScrolled = function () {
     var prevpos = this.lastScrollPos,
@@ -57,6 +69,27 @@ function createScrollableMixin (lib, mylib) {
     }
     this.$element.scrollTop(this.$element[0].scrollHeight);
   };
+  ScrollableMixin.prototype.scrollBottomIfSmallerHeight = function () {
+    //console.log('LAST HEIGHT',this.lastElementHeight,'NEW HEIGHT', this.$element.height());
+    //initially element height is 0 or negative depending on margin so we use body
+    if (this.lastElementHeight <= 0){
+      if (this.lastBodyHeight > $('body').height()){
+        this.scrollElementToBottomUnknown();
+      }
+    }else{
+      if (this.lastElementHeight > this.$element.height()){
+        this.scrollElementToBottomUnknown();
+      }
+    }
+    this.lastElementHeight = this.$element.height();
+    this.lastBodyHeight = $('body').height();
+  };
+  ScrollableMixin.prototype.scrollElementToBottomUnknown = function () {
+    if (!this.$element) {
+      return;
+    }
+    this.$element.scrollTop(9999999999);
+  }
   ScrollableMixin.prototype.elementIsWithinTheScrollableArea = function (el, tolerance) {
     var st, ret, scrollTop, innerHeight, eltop, elheight;
     st = this.getConfigVal('scroll_tolerance');
@@ -112,6 +145,8 @@ function createScrollableMixin (lib, mylib) {
       ,'elementIsScrolledToBottom'
       ,'scrollElementToTop'
       ,'scrollElementToBottom'
+      ,'scrollBottomIfSmallerHeight'
+      ,'scrollElementToBottomUnknown'
       ,'elementIsWithinTheScrollableArea'
     );
     klass.prototype.postInitializationMethodNames = klass.prototype.postInitializationMethodNames.concat('startListeningToElementScroll');
