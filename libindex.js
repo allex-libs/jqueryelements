@@ -15,7 +15,7 @@ function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib) 
   var routerlib = require('./misc/router')(execlib),
     jQueryCreate = require('./jquerycreatecreator')(execlib, templatelib),
     mixins = require('./mixins')(execlib),
-    formRenderingMixins = require('./formrenderingmixins')(execlib);
+    formRenderingMixins = require('./formrenderingmixins')(execlib, applib);
 
   mixins.form = formRenderingMixins;
 
@@ -25,7 +25,7 @@ function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib) 
   require('./resources/urlgeneratorcreator')(execlib, applib);
   require('./resources/throbbercreator')(execlib, applib);
 
-  require('./elements')(execlib, applib, templatelib, htmltemplateslib, applib.mixins, mixins);
+  require('./elements')(execlib, applib, templatelib, htmltemplateslib, mixins);
 
   require('./modifiers/selectorcreator')(execlib, applib);
   require('./modifiers/routecontrollercreator')(execlib, applib);

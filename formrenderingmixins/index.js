@@ -1,4 +1,4 @@
-function createFormRenderingMixins (execlib) {
+function createFormRenderingMixins (execlib, applib) {
   'use strict';
 
   var lib = execlib.lib,
@@ -10,7 +10,8 @@ function createFormRenderingMixins (execlib) {
       Radios: require('./radioscreator')(lib),
       TextFromHash: require('./textfromhashcreator')(lib),
       InputHandler: require('./inputhandlercreator')(lib),
-      NumericSpinner: require('./numericspinnercreator')(lib)
+      NumericSpinner: require('./numericspinnercreator')(lib),
+      Logic: require('./logiccreator')(lib, applib)
     };
 
   require('./formcreator')(lib, ret);
