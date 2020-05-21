@@ -1,4 +1,4 @@
-function createElements (execlib, applib, templatelib, htmltemplateslib, mixins) {
+function createElements (execlib, applib, templatelib, htmltemplateslib, formvalidationlib, mixins) {
   'use strict';
 
   var jobs = require('./jobs')(execlib.lib);
@@ -16,7 +16,6 @@ function createElements (execlib, applib, templatelib, htmltemplateslib, mixins)
   require('./clickablecreator')(execlib, applib, templatelib, htmltemplateslib, mixins);
 
   require('./splashcreator')(execlib, applib, templatelib, htmltemplateslib);
-  require('./formlogiccreator')(execlib, applib, templatelib, htmltemplateslib, mixins);
 }
 
 module.exports = createElements;

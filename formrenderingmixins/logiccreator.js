@@ -16,6 +16,15 @@ function createjQueryFormLogicMixin (lib, applib) {
     this.$form.on('submit', this.fireSubmit.bind(this));
     FormLogicMixin.prototype.initialize.call(this);
   };
+  jQueryFormLogicMixin.prototype.set_actual = function (act) {
+    return FormLogicMixin.prototype.set_actual.call(this, act);
+  };
+  jQueryFormLogicMixin.prototype.set_progress = function (prog) {
+    return FormLogicMixin.prototype.set_progress.call(this, prog);
+  };
+  jQueryFormLogicMixin.prototype.fillObjectWithDefaultValues = function (obj) {
+    return FormLogicMixin.prototype.fillObjectWithDefaultValues.call(this, obj);
+  };
   jQueryFormLogicMixin.prototype.traverseFormFields = function (func) {
     if (!this.$form) {
       return;

@@ -16,6 +16,7 @@
       "node_modules/jquery/dist/jquery.min.js",
       "allex:templateslite:lib",
       "allex:htmltemplates:lib",
+      "allex:formvalidation:lib",
       "node_modules/webfontloader/webfontloader.js"
     ]
   },

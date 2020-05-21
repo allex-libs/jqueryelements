@@ -7,7 +7,6 @@ function createMixins (execlib) {
   require('./clickablecreator')(lib, ret);
   require('./siblingmanipulatorcreator')(lib, ret);
   require('./scrollablecreator')(lib, ret);
-  require('./fromdatacreator')(lib, ret);
   require('./searchablecreator')(lib, ret);
 
   return ret;

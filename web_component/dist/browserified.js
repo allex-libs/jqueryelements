@@ -5,10 +5,11 @@ lR.register('allex_jqueryelementslib',require('./libindex')(
   lR.get('allex_applib'),
   lR.get('allex_applinkinglib'),
   lR.get('allex_templateslitelib'),
-  lR.get('allex_htmltemplateslib')
+  lR.get('allex_htmltemplateslib'),
+  lR.get('allex_formvalidationlib')
 ));
 
-},{"./libindex":30}],2:[function(require,module,exports){
+},{"./libindex":29}],2:[function(require,module,exports){
 function createCanvas (execlib, applib, templatelib, htmltemplateslib) {
 
   'use strict';
@@ -311,211 +312,13 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
 module.exports = createFileInputElement;
 
 },{}],9:[function(require,module,exports){
-function createFormLogic (execlib, applib, templatelib, htmltemplateslib, mixins) {
-  'use strict';
-
-  var lib = execlib.lib,
-    jQueryFormLogicMixin = mixins.form.Logic,
-    WebElement = applib.getElementType('WebElement');
-
-  function FormInputListener (form, input) {
-    this.form = form;
-    this.input = input;
-    this.onchanger = this.onChange.bind(this);
-    input.on('keyup', this.onchanger);
-  }
-  FormInputListener.prototype.destroy = function () {
-    if (this.onchanger && this.input) {
-      this.input.off('keyup', this.onchanger);
-    }
-    this.onchanger = null;
-    this.input = null;
-    this.form = null;
-  };
-  FormInputListener.prototype.onChange = function (ev) {
-    this.form.processFieldChange(this.input);
-  };
-
-  function FormLogic (id, options) {
-    WebElement.call(this, id, options);
-    jQueryFormLogicMixin.call(this, options);
-    this.formInputListeners = [];
-    this.inputValidities = new lib.Map();
-    this.data = null;
-  }
-  lib.inherit(FormLogic, WebElement);
-  jQueryFormLogicMixin.addMethods(FormLogic);
-  FormLogic.prototype.__cleanUp = function () {
-    this.data = null;
-    if (this.inputValidities) {
-      this.inputValidities.destroy();
-    };
-    this.inputValidities = null;
-    if (lib.isArray(this.formInputListeners)) {
-      lib.arryDestroyAll(this.formInputListeners);
-    }
-    this.formInputListeners = null;
-    jQueryFormLogicMixin.prototype.destroy.call(this);
-    WebElement.prototype.__cleanUp.call(this);
-  };
-  FormLogic.prototype.set_data = function (data) {
-    console.log(this.id, 'set_data', data);
-    this.data = data;
-    this.traverseFormFields(inputSetter.bind(null, data));
-    data = null;
-  };
-  function inputSetter (data, el) {
-    var val = data[el.attr('name')] || '';
-    el.val(val);
-  }
-  FormLogic.prototype._prepareField = function (fld) {
-    this.formInputListeners.push(new FormInputListener(this, fld));
-  };
-  FormLogic.prototype.initializeForm = function () {
-    jQueryFormLogicMixin.prototype.initialize.call(this);
-    this.validateInputs();
-  };
-  FormLogic.prototype.validateInputs = function () {
-    if (!lib.isArray(this.formInputListeners)) {
-      return;
-    }
-    this.set('valid', this.formInputListeners.every(this.inputListenerIsValid.bind(this)));
-  };
-  FormLogic.prototype.inputListenerIsValid = function (listener) {
-    var input = null;
-    if (!(listener && listener.input)) {
-      return false;
-    }
-    return this.inputIsValid(listener.input);
-  };
-  FormLogic.prototype.processFieldChange = function (input) {
-    var name = input.attr('name'), val = input.val(), upd = {};
-    upd[name] = val;
-    this.set('data', lib.extend({}, this.get('data'), upd));
-    this.validateInputs();
-  };
-  FormLogic.prototype.inputIsValid = function (input) {
-    var val = input.val(), name = input.attr('name');
-    if (!lib.isVal(val)) {
-      return false;
-    }
-    if (lib.isString(val) && val.length<1) {
-      return false;
-    }
-    return true;
-  };
-  FormLogic.prototype.postInitializationMethodNames = WebElement.prototype.postInitializationMethodNames.concat(['initializeForm']);
-
-
-  applib.registerElementType('FormLogic', FormLogic);
-
-
-
-  var BasicModifier = applib.BasicModifier;
-
-  function FormLogicSubmitModifier (options) {
-    BasicModifier.call(this, options);
-  }
-
-  lib.inherit (FormLogicSubmitModifier, BasicModifier);
-  FormLogicSubmitModifier.prototype.destroy = function () {
-    BasicModifier.prototype.destroy.call(this);
-  };
-
-  FormLogicSubmitModifier.prototype.doProcess = function (name, options, links, logic, resources) {
-    var elements = options.elements;
-    var submitid = name+'Submit',
-      path,
-      elementdesc = lib.extend({}, {
-        name : submitid,
-        type : 'WebElement'
-      }, this.config);
-
-    elements.push (elementdesc);
-    submitid = elementdesc.name;
-    path = '.'+submitid;
-
-    links.push ({
-      source : path+'.$element!click',
-      target : '.>fireSubmit'
-    },
-    {
-      source : '.:valid',
-      target : submitid+'.$element:attr.disabled',
-      filter : this._decideDisabled.bind(this)
-    });
-
-    switch (this.getConfigVal('actualon')){
-      case 'none':
-        break;
-      case 'always' : {
-        links.push ({
-          source : '.:actual',
-          target : path+':actual',
-        });
-        break;
-      }
-      default : 
-      case 'valid' : {
-        logic.push ({
-          triggers : [ '.:valid, .:actual' ],
-          references : path+', .',
-          handler : function (submit, form) {
-            submit.set('actual', form.get('valid') && form.get('actual'));
-          }
-        });
-        break;
-      }
-    }
-
-    switch (this.getConfigVal('enabledon')){
-      case 'none':
-        break;
-      case 'always' : {
-        links.push ({
-          source : '.:actual',
-          target : path+':enabled',
-        });
-        break;
-      }
-      default : 
-      case 'valid' : {
-        logic.push ({
-          triggers : [ '.:valid, .:actual' ],
-          references : path+', .',
-          handler : function (submit, form) {
-            submit.set('enabled', form.get('valid') && form.get('actual'));
-          }
-        });
-        break;
-      }
-    }
-  };
-  FormLogicSubmitModifier.prototype._decideDisabled = function (valid) {
-    return valid ? undefined : 'disabled';
-  };
-
-  FormLogicSubmitModifier.ALLOWED_ON = ['FormLogic'];
-  FormLogicSubmitModifier.prototype.DEFAULT_CONFIG = function () {
-    return {
-      actualon : 'valid'
-    };
-  };
-
-  applib.registerModifier ('FormLogic.submit', FormLogicSubmitModifier);
-
-
-}
-module.exports = createFormLogic;
-
-},{}],10:[function(require,module,exports){
 function createFromDataCreator (execlib, applib, mixins) {
   'use strict';
 
   var lib = execlib.lib,
     BasicElement = applib.BasicElement,
     DataAwareElement = applib.getElementType('DataAwareElement'),
-    FromDataCreatorMixin = mixins.FromDataCreator;
+    FromDataCreatorMixin = applib.mixins.FromDataCreator;
 
   function FromDataCreatorElement (id, options) {
     /* need to be more delicate
@@ -530,100 +333,15 @@ function createFromDataCreator (execlib, applib, mixins) {
     */
     DataAwareElement.call(this, id, options);
     FromDataCreatorMixin.call(this);
-    this.subElements = [];
   }
   lib.inherit(FromDataCreatorElement, DataAwareElement);
   FromDataCreatorMixin.addMethods(FromDataCreatorElement);
   FromDataCreatorElement.prototype.__cleanUp = function () {
-    if (this.subElements) {
-      lib.arryDestroyAll(this.subElements);
-    }
-    this.subElements = null;
     FromDataCreatorMixin.prototype.destroy.call(this);
     DataAwareElement.prototype.__cleanUp.call(this);
   };
-  FromDataCreatorElement.prototype.set_data = function (data) {
-    this._purgeSubElements(data);
-    if (lib.isArray(data)) {
-      this.createFromArryData(data);
-    }
-    return this.super_set_data(data);
-  };
-  /*
-  FromDataCreatorElement.prototype.get_prependdata = function () {
-    return this.data;
-  };
-  */
-  FromDataCreatorElement.prototype.prependData = function (data) {
-    var myprependsubelements = this.getConfigVal('prependsubelements') || false;
-    this.setConfigVal('prependsubelements', true, true);
-    this.set('data', data);
-    this.setConfigVal('prependsubelements', myprependsubelements, true);
-  };
-  /*
-  FromDataCreatorElement.prototype.get_appenddata = function () {
-    return this.data;
-  };
-  */
-  FromDataCreatorElement.prototype.appendData = function (data) {
-    var myprependsubelements = this.getConfigVal('prependsubelements') || false;
-    this.setConfigVal('prependsubelements', false, true);
-    this.set('data', data);
-    this.setConfigVal('prependsubelements', myprependsubelements, true);
-  };
-  FromDataCreatorElement.prototype._purgeSubElements = function (data) {
-    if (data === null || !this.getConfigVal('skip_purge_subelements')) {
-      lib.arryDestroyAll(this.subElements);
-      this.subElements = [];
-    }
-  };
   FromDataCreatorElement.prototype.super_set_data = function (data) {
     return DataAwareElement.prototype.set_data.call(this, data);
-  };
-  FromDataCreatorElement.prototype.createFromArryData = function (data) {
-    if (this.getConfigVal('prependsubelements')) {
-      data = data.slice();
-      data.reverse();
-    }
-    data.forEach(this.createFromArryItem.bind(this));
-  };
-  FromDataCreatorElement.prototype.createFromArryItem = function (item) {
-    var desc = this.createDescriptorFromArryItem(item),
-      testel;
-    if (desc) {
-      try {
-        testel = this.getElement(desc.name);
-        if(testel) {
-          testel.set('data', item);
-          return;
-        }
-      } catch(e) {}
-      desc.options = desc.options || {};
-      if (this.getConfigVal('prependsubelements')) {
-        desc.options.attach_to_parent = 'prepend';
-      }
-      desc.options.data = item;
-      BasicElement.createElement(desc, this.addFromDataChild.bind(this));
-      return;
-    }
-    console.warn(this.constructor.name, 'created no descriptor from', item, 'so no child will be produced');
-  };
-  FromDataCreatorElement.prototype.addFromDataChild = function (chld) {
-    this.subElements.push(this.destructableForSubElements(chld));
-    this.addChild(chld);
-  };
-  FromDataCreatorElement.prototype.destructableForSubElements = function (chld) {
-    return chld;
-  };
-  FromDataCreatorElement.prototype.createDescriptorFromArryItem = function (item) {
-    if (lib.isFunction(this.config.subDescriptorFromData)) {
-      return this.config.subDescriptorFromData(item);
-    }
-    /*
-    lib.extend({
-      name: this.config.data2Name(item)
-    }, this.config.subDescriptor)
-    */
   };
 
 
@@ -633,7 +351,7 @@ function createFromDataCreator (execlib, applib, mixins) {
 
 module.exports = createFromDataCreator;
 
-},{}],11:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 function createImg (execlib, applib, templatelib, htmltemplateslib) {
 
   'use strict';
@@ -721,8 +439,8 @@ function createImg (execlib, applib, templatelib, htmltemplateslib) {
 }
 module.exports = createImg;
 
-},{}],12:[function(require,module,exports){
-function createElements (execlib, applib, templatelib, htmltemplateslib, mixins) {
+},{}],11:[function(require,module,exports){
+function createElements (execlib, applib, templatelib, htmltemplateslib, formvalidationlib, mixins) {
   'use strict';
 
   var jobs = require('./jobs')(execlib.lib);
@@ -740,12 +458,11 @@ function createElements (execlib, applib, templatelib, htmltemplateslib, mixins)
   require('./clickablecreator')(execlib, applib, templatelib, htmltemplateslib, mixins);
 
   require('./splashcreator')(execlib, applib, templatelib, htmltemplateslib);
-  require('./formlogiccreator')(execlib, applib, templatelib, htmltemplateslib, mixins);
 }
 
 module.exports = createElements;
 
-},{"./canvascreator":2,"./clickablecreator":3,"./dataawarechildcreator":4,"./dataawareelementcreator":5,"./divcreator":6,"./domelementcreator":7,"./fileinputcreator":8,"./formlogiccreator":9,"./fromdatacreatorcreator":10,"./imgcreator":11,"./jobs":13,"./splashcreator":15,"./webelementcreator":16}],13:[function(require,module,exports){
+},{"./canvascreator":2,"./clickablecreator":3,"./dataawarechildcreator":4,"./dataawareelementcreator":5,"./divcreator":6,"./domelementcreator":7,"./fileinputcreator":8,"./fromdatacreatorcreator":9,"./imgcreator":10,"./jobs":12,"./splashcreator":14,"./webelementcreator":15}],12:[function(require,module,exports){
 function createJobs (lib) {
   'use strict';
 
@@ -757,7 +474,7 @@ function createJobs (lib) {
 }
 module.exports = createJobs;
 
-},{"./readfilecreator":14}],14:[function(require,module,exports){
+},{"./readfilecreator":13}],13:[function(require,module,exports){
 function createReadFileJob (lib, mylib) {
   'use strict';
 
@@ -829,7 +546,7 @@ function createReadFileJob (lib, mylib) {
 }
 module.exports = createReadFileJob;
 
-},{}],15:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 function createSplashElement (execlib, applib, templatelib, htmltemplateslib) {
   'use strict';
 
@@ -852,7 +569,7 @@ function createSplashElement (execlib, applib, templatelib, htmltemplateslib) {
 }
 module.exports = createSplashElement;
 
-},{}],16:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 function createWebElement (execlib, applib, templatelib) {
   'use strict';
 
@@ -1486,7 +1203,7 @@ function createWebElement (execlib, applib, templatelib) {
 
 module.exports = createWebElement;
 
-},{}],17:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 function createBitMaskCheckboxesMixin (lib) {
   'use strict';
 
@@ -1615,7 +1332,7 @@ function createBitMaskCheckboxesMixin (lib) {
 }
 module.exports = createBitMaskCheckboxesMixin;
 
-},{}],18:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 function createDataHolder (lib) {
   'use strict';
 
@@ -1678,7 +1395,7 @@ function createDataHolder (lib) {
 }
 module.exports = createDataHolder;
 
-},{}],19:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 function createFormMixin (lib, mylib) {
   'use strict';
 
@@ -1724,7 +1441,7 @@ function createFormMixin (lib, mylib) {
 };
 module.exports = createFormMixin;
 
-},{}],20:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 function createHashCollectorMixin (lib) {
   'use strict';
 
@@ -1970,7 +1687,7 @@ function createHashCollectorMixin (lib) {
 }
 module.exports = createHashCollectorMixin;
 
-},{}],21:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 function createHashDistributorMixin (lib) {
   'use strict';
 
@@ -2012,7 +1729,7 @@ function createHashDistributorMixin (lib) {
 }
 module.exports = createHashDistributorMixin;
 
-},{}],22:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 function createFormRenderingMixins (execlib, applib) {
   'use strict';
 
@@ -2034,7 +1751,7 @@ function createFormRenderingMixins (execlib, applib) {
 }
 module.exports = createFormRenderingMixins;
 
-},{"./bitmaskcheckboxescreator":17,"./dataholdercreator":18,"./formcreator":19,"./hashcollectorcreator":20,"./hashdistributorcreator":21,"./inputhandlercreator":23,"./logiccreator":24,"./numericspinnercreator":25,"./radioscreator":26,"./textfromhashcreator":27}],23:[function(require,module,exports){
+},{"./bitmaskcheckboxescreator":16,"./dataholdercreator":17,"./formcreator":18,"./hashcollectorcreator":19,"./hashdistributorcreator":20,"./inputhandlercreator":22,"./logiccreator":23,"./numericspinnercreator":24,"./radioscreator":25,"./textfromhashcreator":26}],22:[function(require,module,exports){
 function createInputHandlerMixin (lib) {
   'use strict';
 
@@ -2135,7 +1852,7 @@ function createInputHandlerMixin (lib) {
 }
 module.exports = createInputHandlerMixin;
 
-},{}],24:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 function createjQueryFormLogicMixin (lib, applib) {
   'use strict';
   var FormLogicMixin = applib.mixins.FormMixin;
@@ -2153,6 +1870,15 @@ function createjQueryFormLogicMixin (lib, applib) {
     this.$form.removeAttr ('action'); //in order to avoid some refresh or so ...
     this.$form.on('submit', this.fireSubmit.bind(this));
     FormLogicMixin.prototype.initialize.call(this);
+  };
+  jQueryFormLogicMixin.prototype.set_actual = function (act) {
+    return FormLogicMixin.prototype.set_actual.call(this, act);
+  };
+  jQueryFormLogicMixin.prototype.set_progress = function (prog) {
+    return FormLogicMixin.prototype.set_progress.call(this, prog);
+  };
+  jQueryFormLogicMixin.prototype.fillObjectWithDefaultValues = function (obj) {
+    return FormLogicMixin.prototype.fillObjectWithDefaultValues.call(this, obj);
   };
   jQueryFormLogicMixin.prototype.traverseFormFields = function (func) {
     if (!this.$form) {
@@ -2213,7 +1939,7 @@ function createjQueryFormLogicMixin (lib, applib) {
 }
 module.exports = createjQueryFormLogicMixin;
 
-},{}],25:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 function createNumericSpinner (lib) {
   'use strict';
 
@@ -2319,7 +2045,7 @@ function createNumericSpinner (lib) {
 }
 module.exports = createNumericSpinner;
 
-},{}],26:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 function createRadiosMixin (lib) {
   'use strict';
 
@@ -2447,7 +2173,7 @@ function createRadiosMixin (lib) {
 }
 module.exports = createRadiosMixin;
 
-},{}],27:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 function createTextFromHashMixin (lib) {
   'use strict';
 
@@ -2491,7 +2217,7 @@ function createTextFromHashMixin (lib) {
 }
 module.exports = createTextFromHashMixin;
 
-},{}],28:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 function createHandlers (execlib, applib, linkinglib) {
   'use strict';
 
@@ -2684,7 +2410,7 @@ function createHandlers (execlib, applib, linkinglib) {
 
 module.exports = createHandlers;
 
-},{}],29:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 function createJQueryCreate (execlib, templatelib) {
   'use stict';
 
@@ -2706,7 +2432,7 @@ function createJQueryCreate (execlib, templatelib) {
 
 module.exports = createJQueryCreate;
 
-},{}],30:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 /**
  * A library that uses {@link allex://allex_applib} and jQuery
  * to build the basic Web App functionality.
@@ -2718,7 +2444,7 @@ module.exports = createJQueryCreate;
  *
  * @namespace allex_jqueryelementslib
  */
-function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib) {
+function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib, formvalidationlib) {
   'use strict';
 
   var routerlib = require('./misc/router')(execlib),
@@ -2734,7 +2460,7 @@ function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib) 
   require('./resources/urlgeneratorcreator')(execlib, applib);
   require('./resources/throbbercreator')(execlib, applib);
 
-  require('./elements')(execlib, applib, templatelib, htmltemplateslib, mixins);
+  require('./elements')(execlib, applib, templatelib, htmltemplateslib, formvalidationlib, mixins);
 
   require('./modifiers/selectorcreator')(execlib, applib);
   require('./modifiers/routecontrollercreator')(execlib, applib);
@@ -2757,7 +2483,7 @@ function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib) 
 
 module.exports = createLib;
 
-},{"./elements":12,"./formrenderingmixins":22,"./handlers":28,"./jquerycreatecreator":29,"./misc/router":31,"./mixins":34,"./modifiers/routecontrollercreator":38,"./modifiers/selectorcreator":39,"./preprocessors/dataviewcreator":40,"./preprocessors/keyboardcreator":41,"./preprocessors/logoutdeactivatorcreator":42,"./preprocessors/pipelinecreator":43,"./preprocessors/roleroutercreator":44,"./preprocessors/tabviewcreator":45,"./resources/fontloadercreator":46,"./resources/throbbercreator":47,"./resources/urlgeneratorcreator":48}],31:[function(require,module,exports){
+},{"./elements":11,"./formrenderingmixins":21,"./handlers":27,"./jquerycreatecreator":28,"./misc/router":30,"./mixins":32,"./modifiers/routecontrollercreator":36,"./modifiers/selectorcreator":37,"./preprocessors/dataviewcreator":38,"./preprocessors/keyboardcreator":39,"./preprocessors/logoutdeactivatorcreator":40,"./preprocessors/pipelinecreator":41,"./preprocessors/roleroutercreator":42,"./preprocessors/tabviewcreator":43,"./resources/fontloadercreator":44,"./resources/throbbercreator":45,"./resources/urlgeneratorcreator":46}],30:[function(require,module,exports){
 function createRouterLib (allex) {
   'use strict';
 
@@ -3002,7 +2728,7 @@ function createRouterLib (allex) {
 
 module.exports = createRouterLib;
 
-},{}],32:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 function createClickableMixin (lib, mylib) {
   'use strict';
 
@@ -3102,23 +2828,7 @@ function createClickableMixin (lib, mylib) {
 }
 module.exports = createClickableMixin;
 
-},{}],33:[function(require,module,exports){
-function createFromDataCreatorMixin (lib, mylib) {
-  'use strict';
-
-  function FromDataCreatorMixin () {
-  }
-  FromDataCreatorMixin.prototype.destroy = function () {
-  };
-
-  FromDataCreatorMixin.addMethods = function (klass) {
-  };
-
-  mylib.FromDataCreator = FromDataCreatorMixin;
-}
-module.exports = createFromDataCreatorMixin;
-
-},{}],34:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 function createMixins (execlib) {
   'use strict';
 
@@ -3128,14 +2838,13 @@ function createMixins (execlib) {
   require('./clickablecreator')(lib, ret);
   require('./siblingmanipulatorcreator')(lib, ret);
   require('./scrollablecreator')(lib, ret);
-  require('./fromdatacreator')(lib, ret);
   require('./searchablecreator')(lib, ret);
 
   return ret;
 }
 module.exports = createMixins;
 
-},{"./clickablecreator":32,"./fromdatacreator":33,"./scrollablecreator":35,"./searchablecreator":36,"./siblingmanipulatorcreator":37}],35:[function(require,module,exports){
+},{"./clickablecreator":31,"./scrollablecreator":33,"./searchablecreator":34,"./siblingmanipulatorcreator":35}],33:[function(require,module,exports){
 function createScrollableMixin (lib, mylib) {
   'use strict';
 
@@ -3229,6 +2938,7 @@ function createScrollableMixin (lib, mylib) {
     this.$element.scrollTop(9999999999);
   }
   ScrollableMixin.prototype.elementIsWithinTheScrollableArea = function (el, tolerance) {
+    /*
     var st, ret, scrollTop, innerHeight, eltop, elheight;
     st = this.getConfigVal('scroll_tolerance');
     tolerance = lib.isNumber(tolerance) ? tolerance : (lib.isNumber(st) ? st : 0);
@@ -3240,6 +2950,17 @@ function createScrollableMixin (lib, mylib) {
       return true;
     }
     return false;
+    */
+    var mytop, myheight, eltop, elheight;
+    if (!this.$element) {
+      return false;
+    }
+    mytop = this.$element.position().top;
+    myheight = this.$element.innerHeight();
+    eltop = el.position().top - mytop;
+    elheight = el.outerHeight();
+    //console.log('within?', el.attr('allexid'), 'eltop', eltop, 'elheight', elheight, 'vs myheight', myheight);
+    return (eltop>=0) && (eltop+elheight<=myheight);
   };
 
   //static
@@ -3294,7 +3015,7 @@ function createScrollableMixin (lib, mylib) {
 }
 module.exports = createScrollableMixin;
 
-},{}],36:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 function createSearchableMixin (lib, mylib) {
   'use strict';
 
@@ -3333,7 +3054,7 @@ function createSearchableMixin (lib, mylib) {
 }
 module.exports = createSearchableMixin;
 
-},{}],37:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 function createSiblingManipulatorMutex (lib, mylib) {
   'use strict';
 
@@ -3411,7 +3132,7 @@ function createSiblingManipulatorMutex (lib, mylib) {
 }
 module.exports = createSiblingManipulatorMutex;
 
-},{}],38:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 function createRouteController (allex, applib) {
   'use strict';
 
@@ -3439,7 +3160,7 @@ function createRouteController (allex, applib) {
 
 module.exports = createRouteController;
 
-},{}],39:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 function createSelectorModifier (allex, applib) {
   'use strict';
 
@@ -3499,7 +3220,7 @@ function createSelectorModifier (allex, applib) {
 
 module.exports = createSelectorModifier;
 
-},{}],40:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 function createDataViewProcessor (allex, applib) {
   'use strict';
 
@@ -3584,7 +3305,7 @@ function createDataViewProcessor (allex, applib) {
 
 module.exports = createDataViewProcessor;
 
-},{}],41:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 function createKeyboardProcessor (allex, applib) {
   'use strict';
 
@@ -3640,7 +3361,7 @@ function createKeyboardProcessor (allex, applib) {
 
 module.exports = createKeyboardProcessor;
 
-},{}],42:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 function createLogoutDeactivatorProcessor (allex, applib) {
   'use strict';
   var lib = allex.lib,
@@ -3727,7 +3448,7 @@ function createLogoutDeactivatorProcessor (allex, applib) {
 
 module.exports = createLogoutDeactivatorProcessor;
 
-},{}],43:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 function createPipelineProcessor (allex, applib) {
   'use strict';
   var lib = allex.lib,
@@ -4091,7 +3812,7 @@ function createPipelineProcessor (allex, applib) {
 module.exports = createPipelineProcessor;
 
 
-},{}],44:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 function createRoleRouterPreprocessor (allex, routerlib, applib) {
   'use strict';
   var lib = allex.lib,
@@ -4256,7 +3977,7 @@ function createRoleRouterPreprocessor (allex, routerlib, applib) {
 
 module.exports = createRoleRouterPreprocessor;
 
-},{}],45:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 function createTabViewProcessor (allex, routerlib, applib, templatelib) {
   'use strict';
   var lib = allex.lib,
@@ -4421,7 +4142,7 @@ function createTabViewProcessor (allex, routerlib, applib, templatelib) {
 
 module.exports = createTabViewProcessor;
 
-},{}],46:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 function createFontLoader(allex, applib, $) {
   'use strict';
 
@@ -4479,7 +4200,7 @@ function createFontLoader(allex, applib, $) {
 
 module.exports = createFontLoader;
 
-},{}],47:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 function createThrobberResource (allex, applib) {
   'use strict';
 
@@ -4563,7 +4284,7 @@ function createThrobberResource (allex, applib) {
 
 module.exports = createThrobberResource;
 
-},{}],48:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 function createURLGeneratorResource (execlib, applib) {
   var lib = execlib.lib,
   BasicResourceLoader = applib.BasicResourceLoader,

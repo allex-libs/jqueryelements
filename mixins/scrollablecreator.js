@@ -91,6 +91,7 @@ function createScrollableMixin (lib, mylib) {
     this.$element.scrollTop(9999999999);
   }
   ScrollableMixin.prototype.elementIsWithinTheScrollableArea = function (el, tolerance) {
+    /*
     var st, ret, scrollTop, innerHeight, eltop, elheight;
     st = this.getConfigVal('scroll_tolerance');
     tolerance = lib.isNumber(tolerance) ? tolerance : (lib.isNumber(st) ? st : 0);
@@ -102,6 +103,17 @@ function createScrollableMixin (lib, mylib) {
       return true;
     }
     return false;
+    */
+    var mytop, myheight, eltop, elheight;
+    if (!this.$element) {
+      return false;
+    }
+    mytop = this.$element.position().top;
+    myheight = this.$element.innerHeight();
+    eltop = el.position().top - mytop;
+    elheight = el.outerHeight();
+    //console.log('within?', el.attr('allexid'), 'eltop', eltop, 'elheight', elheight, 'vs myheight', myheight);
+    return (eltop>=0) && (eltop+elheight<=myheight);
   };
 
   //static
