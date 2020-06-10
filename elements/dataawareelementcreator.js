@@ -16,6 +16,31 @@ function createDataAwareElement (execlib, DataElementMixIn, applib) {
     WebElement.prototype.__cleanUp.call(this);
   };
 
+  DataAwareElement.prototype.onNullData = function (isnull) {
+    //console.log(this.constructor.name, 'got null data', isnull);
+    jQueryshowhide(this.$element, this.getConfigVal('nulldata_finder'), isnull);
+  };
+  DataAwareElement.prototype.onEmptyDataArray = function (isempty) {
+    //console.log(this.constructor.name, 'got empty data', isempty);
+    jQueryshowhide(this.$element, this.getConfigVal('emptydataarray_finder'), isempty);
+  };
+  function jQueryshowhide (elem, finderobj, doshow) {
+    var finder, showargs, hideargs, el;
+    if (!(elem && finderobj)) {
+      return;
+    }
+    if (lib.isString(finderobj)) {
+      finder = finderobj;
+      showargs = [];
+      hideargs = [];
+    } else {
+      finder = finderobj.finder;
+      showargs = finderobj.showargs;
+      hideargs = finderobj.hideargs;
+    }
+    el = elem.find(finder);
+    el[doshow ? 'show' : 'hide'].apply(el, doshow ? showargs : hideargs);
+  }
   DataAwareElement.prototype.getDefaultMarkup = function () {
     var ret = WebElement.prototype.getDefaultMarkup.call(this), dm;
     if (lib.isVal(ret)) {

@@ -1,0 +1,6 @@
+:root {
+    --herssat: env(safe-area-inset-top);
+    --herssar: env(safe-area-inset-right);
+    --herssab: env(safe-area-inset-bottom);
+    --herssal: env(safe-area-inset-left);
+}
