@@ -9,7 +9,7 @@ lR.register('allex_jqueryelementslib',require('./libindex')(
   lR.get('allex_formvalidationlib')
 ));
 
-},{"./libindex":29}],2:[function(require,module,exports){
+},{"./libindex":31}],2:[function(require,module,exports){
 function createCanvas (execlib, applib, templatelib, htmltemplateslib) {
 
   'use strict';
@@ -146,6 +146,14 @@ function createDataAwareElement (execlib, DataElementMixIn, applib) {
     WebElement.prototype.__cleanUp.call(this);
   };
 
+  DataAwareElement.prototype.set_data = function (data) {
+    var ret = DataElementMixIn.prototype.set_data.call(this, data),
+      dkn = this.getConfigVal('datakeyname');
+    if (ret && this.$element && dkn) {
+      this.$element.data(dkn, data);
+    }
+    return ret;
+  };
   DataAwareElement.prototype.onNullData = function (isnull) {
     //console.log(this.constructor.name, 'got null data', isnull);
     jQueryshowhide(this.$element, this.getConfigVal('nulldata_finder'), isnull);
@@ -2207,14 +2215,14 @@ function createTextFromHashMixin (lib) {
   TextFromHashMixin.prototype.destroy = function () {
   };
   TextFromHashMixin.prototype.get_data = function () {
-    return null;
+    return void 0;
   };
   TextFromHashMixin.prototype.set_data = function (data) {
     var t = this.hashToText(data);
     if (null === t) {
       return;
     }
-    this.set(this.targetedStateForHashToText(), t||'');
+    this.set(this.targetedStateForHashToText(), lib.isVal(t) ? t+'' : '');
   };
   TextFromHashMixin.prototype.targetedStateForHashToText = function () {
     if (this.getConfigVal('text_is_value')) {
@@ -2436,6 +2444,65 @@ function createHandlers (execlib, applib, linkinglib) {
 module.exports = createHandlers;
 
 },{}],28:[function(require,module,exports){
+function createHelpers (execlib) {
+  'use strict';
+
+  var ret = {};
+
+  require('./inputlistenercreator')(execlib.lib, ret);
+
+  return ret;
+}
+module.exports = createHelpers;
+
+},{"./inputlistenercreator":29}],29:[function(require,module,exports){
+function createInputListener (lib, mylib) {
+  'use strict';
+
+  //input is a jQuery object
+  function InputListener (input, changecallback) {
+    this.input = input;
+    this.cb = changecallback;
+    this.onchanger = this.onChange.bind(this);
+    this.onvirtchanger = this.onVirtualChange.bind(this);
+    this.lastknownval = null;
+    input.on('keyup', this.onchanger);
+    input.on('paste', this.onvirtchanger);
+    input.on('cut', this.onvirtchanger);
+  }
+  InputListener.prototype.destroy = function () {
+    this.lastknownval = null;
+    if (this.onvirtchanger && this.input) {
+      this.input.off('cut', this.onvirtchanger);
+      this.input.off('paste', this.onvirtchanger);
+    }
+    this.onvirtchanger = null;
+    if (this.onchanger && this.input) {
+      this.input.off('keyup', this.onchanger);
+    }
+    this.onchanger = null;
+    this.cb = null;
+    this.input = null;
+  };
+  InputListener.prototype.onChange = function (ev_ignored) {
+    if (this.input.val() === this.lastknownval) {
+      return;
+    }
+    this.lastknownval = null;
+    if (lib.isFunction(this.cb)) {
+      this.cb();
+    }
+  };
+  InputListener.prototype.onVirtualChange = function (ev) {
+    this.lastknownval = this.input.val();
+    lib.runNext(this.onChange.bind(this), 10);
+  };
+
+  mylib.InputListener = InputListener;
+}
+module.exports = createInputListener;
+
+},{}],30:[function(require,module,exports){
 function createJQueryCreate (execlib, templatelib) {
   'use stict';
 
@@ -2457,7 +2524,7 @@ function createJQueryCreate (execlib, templatelib) {
 
 module.exports = createJQueryCreate;
 
-},{}],29:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 /**
  * A library that uses {@link allex://allex_applib} and jQuery
  * to build the basic Web App functionality.
@@ -2475,6 +2542,7 @@ function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib, 
   var routerlib = require('./misc/router')(execlib),
     jQueryCreate = require('./jquerycreatecreator')(execlib, templatelib),
     mixins = require('./mixins')(execlib),
+    helpers = require('./helpers')(execlib),
     formRenderingMixins = require('./formrenderingmixins')(execlib, applib);
 
   mixins.form = formRenderingMixins;
@@ -2502,13 +2570,14 @@ function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib, 
     RouterMixin: routerlib.RouterMixin,
     Router: routerlib.Router,
     RoleRouter: routerlib.RoleRouter,
+    helpers: helpers,
     mixins: mixins
   };
 }
 
 module.exports = createLib;
 
-},{"./elements":11,"./formrenderingmixins":21,"./handlers":27,"./jquerycreatecreator":28,"./misc/router":30,"./mixins":32,"./modifiers/routecontrollercreator":36,"./modifiers/selectorcreator":37,"./preprocessors/dataviewcreator":38,"./preprocessors/keyboardcreator":39,"./preprocessors/logoutdeactivatorcreator":40,"./preprocessors/pipelinecreator":41,"./preprocessors/roleroutercreator":42,"./preprocessors/tabviewcreator":43,"./resources/fontloadercreator":44,"./resources/throbbercreator":45,"./resources/urlgeneratorcreator":46}],30:[function(require,module,exports){
+},{"./elements":11,"./formrenderingmixins":21,"./handlers":27,"./helpers":28,"./jquerycreatecreator":30,"./misc/router":32,"./mixins":34,"./modifiers/routecontrollercreator":38,"./modifiers/selectorcreator":39,"./preprocessors/dataviewcreator":40,"./preprocessors/keyboardcreator":41,"./preprocessors/logoutdeactivatorcreator":42,"./preprocessors/pipelinecreator":43,"./preprocessors/roleroutercreator":44,"./preprocessors/tabviewcreator":45,"./resources/fontloadercreator":46,"./resources/throbbercreator":47,"./resources/urlgeneratorcreator":48}],32:[function(require,module,exports){
 function createRouterLib (allex) {
   'use strict';
 
@@ -2753,7 +2822,7 @@ function createRouterLib (allex) {
 
 module.exports = createRouterLib;
 
-},{}],31:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 function createClickableMixin (lib, mylib) {
   'use strict';
 
@@ -2853,7 +2922,7 @@ function createClickableMixin (lib, mylib) {
 }
 module.exports = createClickableMixin;
 
-},{}],32:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 function createMixins (execlib) {
   'use strict';
 
@@ -2869,7 +2938,7 @@ function createMixins (execlib) {
 }
 module.exports = createMixins;
 
-},{"./clickablecreator":31,"./scrollablecreator":33,"./searchablecreator":34,"./siblingmanipulatorcreator":35}],33:[function(require,module,exports){
+},{"./clickablecreator":33,"./scrollablecreator":35,"./searchablecreator":36,"./siblingmanipulatorcreator":37}],35:[function(require,module,exports){
 function createScrollableMixin (lib, mylib) {
   'use strict';
 
@@ -3040,7 +3109,7 @@ function createScrollableMixin (lib, mylib) {
 }
 module.exports = createScrollableMixin;
 
-},{}],34:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 function createSearchableMixin (lib, mylib) {
   'use strict';
 
@@ -3079,7 +3148,7 @@ function createSearchableMixin (lib, mylib) {
 }
 module.exports = createSearchableMixin;
 
-},{}],35:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 function createSiblingManipulatorMutex (lib, mylib) {
   'use strict';
 
@@ -3157,7 +3226,7 @@ function createSiblingManipulatorMutex (lib, mylib) {
 }
 module.exports = createSiblingManipulatorMutex;
 
-},{}],36:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 function createRouteController (allex, applib) {
   'use strict';
 
@@ -3185,7 +3254,7 @@ function createRouteController (allex, applib) {
 
 module.exports = createRouteController;
 
-},{}],37:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 function createSelectorModifier (allex, applib) {
   'use strict';
 
@@ -3245,7 +3314,7 @@ function createSelectorModifier (allex, applib) {
 
 module.exports = createSelectorModifier;
 
-},{}],38:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 function createDataViewProcessor (allex, applib) {
   'use strict';
 
@@ -3330,7 +3399,7 @@ function createDataViewProcessor (allex, applib) {
 
 module.exports = createDataViewProcessor;
 
-},{}],39:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 function createKeyboardProcessor (allex, applib) {
   'use strict';
 
@@ -3386,7 +3455,7 @@ function createKeyboardProcessor (allex, applib) {
 
 module.exports = createKeyboardProcessor;
 
-},{}],40:[function(require,module,exports){
+},{}],42:[function(require,module,exports){
 function createLogoutDeactivatorProcessor (allex, applib) {
   'use strict';
   var lib = allex.lib,
@@ -3473,7 +3542,7 @@ function createLogoutDeactivatorProcessor (allex, applib) {
 
 module.exports = createLogoutDeactivatorProcessor;
 
-},{}],41:[function(require,module,exports){
+},{}],43:[function(require,module,exports){
 function createPipelineProcessor (allex, applib) {
   'use strict';
   var lib = allex.lib,
@@ -3837,7 +3906,7 @@ function createPipelineProcessor (allex, applib) {
 module.exports = createPipelineProcessor;
 
 
-},{}],42:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 function createRoleRouterPreprocessor (allex, routerlib, applib) {
   'use strict';
   var lib = allex.lib,
@@ -4002,7 +4071,7 @@ function createRoleRouterPreprocessor (allex, routerlib, applib) {
 
 module.exports = createRoleRouterPreprocessor;
 
-},{}],43:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 function createTabViewProcessor (allex, routerlib, applib, templatelib) {
   'use strict';
   var lib = allex.lib,
@@ -4167,7 +4236,7 @@ function createTabViewProcessor (allex, routerlib, applib, templatelib) {
 
 module.exports = createTabViewProcessor;
 
-},{}],44:[function(require,module,exports){
+},{}],46:[function(require,module,exports){
 function createFontLoader(allex, applib, $) {
   'use strict';
 
@@ -4225,7 +4294,7 @@ function createFontLoader(allex, applib, $) {
 
 module.exports = createFontLoader;
 
-},{}],45:[function(require,module,exports){
+},{}],47:[function(require,module,exports){
 function createThrobberResource (allex, applib) {
   'use strict';
 
@@ -4309,7 +4378,7 @@ function createThrobberResource (allex, applib) {
 
 module.exports = createThrobberResource;
 
-},{}],46:[function(require,module,exports){
+},{}],48:[function(require,module,exports){
 function createURLGeneratorResource (execlib, applib) {
   var lib = execlib.lib,
   BasicResourceLoader = applib.BasicResourceLoader,

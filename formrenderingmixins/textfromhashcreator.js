@@ -6,14 +6,14 @@ function createTextFromHashMixin (lib) {
   TextFromHashMixin.prototype.destroy = function () {
   };
   TextFromHashMixin.prototype.get_data = function () {
-    return null;
+    return void 0;
   };
   TextFromHashMixin.prototype.set_data = function (data) {
     var t = this.hashToText(data);
     if (null === t) {
       return;
     }
-    this.set(this.targetedStateForHashToText(), t||'');
+    this.set(this.targetedStateForHashToText(), lib.isVal(t) ? t+'' : '');
   };
   TextFromHashMixin.prototype.targetedStateForHashToText = function () {
     if (this.getConfigVal('text_is_value')) {

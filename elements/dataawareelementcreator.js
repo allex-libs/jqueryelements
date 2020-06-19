@@ -16,6 +16,14 @@ function createDataAwareElement (execlib, DataElementMixIn, applib) {
     WebElement.prototype.__cleanUp.call(this);
   };
 
+  DataAwareElement.prototype.set_data = function (data) {
+    var ret = DataElementMixIn.prototype.set_data.call(this, data),
+      dkn = this.getConfigVal('datakeyname');
+    if (ret && this.$element && dkn) {
+      this.$element.data(dkn, data);
+    }
+    return ret;
+  };
   DataAwareElement.prototype.onNullData = function (isnull) {
     //console.log(this.constructor.name, 'got null data', isnull);
     jQueryshowhide(this.$element, this.getConfigVal('nulldata_finder'), isnull);

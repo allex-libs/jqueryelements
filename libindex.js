@@ -15,6 +15,7 @@ function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib, 
   var routerlib = require('./misc/router')(execlib),
     jQueryCreate = require('./jquerycreatecreator')(execlib, templatelib),
     mixins = require('./mixins')(execlib),
+    helpers = require('./helpers')(execlib),
     formRenderingMixins = require('./formrenderingmixins')(execlib, applib);
 
   mixins.form = formRenderingMixins;
@@ -42,6 +43,7 @@ function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib, 
     RouterMixin: routerlib.RouterMixin,
     Router: routerlib.Router,
     RoleRouter: routerlib.RoleRouter,
+    helpers: helpers,
     mixins: mixins
   };
 }
