@@ -1471,6 +1471,7 @@ function createFormMixin (lib, mylib) {
       ret = HashDistributorMixin.prototype.set_data.call(this, data);
     }
     this.recheckChildren();
+    this.set('changedinternally', false);
     this.settingdata = false;
     return ret;
   };
