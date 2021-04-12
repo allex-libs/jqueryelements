@@ -9,11 +9,23 @@ function createTextFromHashMixin (lib) {
     return void 0;
   };
   TextFromHashMixin.prototype.set_data = function (data) {
-    var t = this.hashToText(data);
+    var t = this.hashToText(data), pref, suff;
     if (null === t) {
       return;
     }
-    this.set(this.targetedStateForHashToText(), lib.isVal(t) ? t+'' : '');
+    if (lib.isVal(t)) {
+      pref = this.getConfigVal('text_prefix');
+      if (pref) {
+        t = (pref+t);
+      }
+      suff = this.getConfigVal('text_suffix');
+      if (suff) {
+        t = (t+suff);
+      }
+    } else {
+      t = '';
+    }
+    this.set(this.targetedStateForHashToText(), t);
   };
   TextFromHashMixin.prototype.targetedStateForHashToText = function () {
     if (this.getConfigVal('text_is_value')) {

@@ -1082,17 +1082,9 @@ function createWebElement (execlib, applib, templatelib) {
     this.$element.hide();
   };
 
-  function splitAtDot (str) {
-    var dotpos = str.indexOf('.');
-    if (dotpos>=0) {
-      return [str.slice(0,dotpos), str.slice(dotpos+1)];
-    }
-    return [str, null];
-  }
-
   WebElement.prototype.getElement = function (path) {
     //e, aj vidi u cemu je ovde fora ... jel .$element ili je $element ili sta je koji moj ... i gledaj samo pocetak sa replace ....
-    var ret, elempath, splits, elem;
+    var ret, elempath;
 
     if (path.indexOf('$element.') === 0){
       elempath = path.replace('$element.', '');
@@ -1113,31 +1105,7 @@ function createWebElement (execlib, applib, templatelib) {
       return ret;
     }
 
-    splits = splitAtDot(path);
-    //console.log(path, '=>', splits);
-    if (!splits[0]) {
-      elem = this;
-    } else {
-      elem = this.findById(splits[0]);
-    }
-    if (!elem) {
-      throw new lib.Error('INVALID_PATH', 'Path '+path+' did not produce a valid first element');
-    }
-    return splits[1] ? elem.getElement(splits[1]) : elem;
-
-    /*
-    path = path.replace (/^\./, '');
-
-    if (path === '$element')  {
-      return this.$element;
-    }
-
-    if (path === '.') {
-      return this.getMeAsElement();
-    }
-
-    return this.childAtPath(path);
-    */
+    return BasicElement.prototype.getElement.call(this, path);
   };
 
   WebElement.prototype.findById = function (id) {
@@ -2279,11 +2247,23 @@ function createTextFromHashMixin (lib) {
     return void 0;
   };
   TextFromHashMixin.prototype.set_data = function (data) {
-    var t = this.hashToText(data);
+    var t = this.hashToText(data), pref, suff;
     if (null === t) {
       return;
     }
-    this.set(this.targetedStateForHashToText(), lib.isVal(t) ? t+'' : '');
+    if (lib.isVal(t)) {
+      pref = this.getConfigVal('text_prefix');
+      if (pref) {
+        t = (pref+t);
+      }
+      suff = this.getConfigVal('text_suffix');
+      if (suff) {
+        t = (t+suff);
+      }
+    } else {
+      t = '';
+    }
+    this.set(this.targetedStateForHashToText(), t);
   };
   TextFromHashMixin.prototype.targetedStateForHashToText = function () {
     if (this.getConfigVal('text_is_value')) {
