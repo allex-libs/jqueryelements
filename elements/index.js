@@ -15,6 +15,8 @@ function createElements (execlib, applib, templatelib, htmltemplateslib, formval
   require('./fileinputcreator')(execlib, applib, templatelib, htmltemplateslib, jobs);
   require('./clickablecreator')(execlib, applib, templatelib, htmltemplateslib, mixins);
 
+  require('./selectcreator')(execlib, applib, templatelib, htmltemplateslib, mixins);
+
   require('./splashcreator')(execlib, applib, templatelib, htmltemplateslib);
 }
 
