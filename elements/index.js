@@ -16,6 +16,7 @@ function createElements (execlib, applib, templatelib, htmltemplateslib, formval
   require('./clickablecreator')(execlib, applib, templatelib, htmltemplateslib, mixins);
 
   require('./selectcreator')(execlib, applib, templatelib, htmltemplateslib, mixins);
+  require('./nonbiunivocalselectcreator')(execlib, applib, templatelib, htmltemplateslib, mixins);
 
   require('./splashcreator')(execlib, applib, templatelib, htmltemplateslib);
 }

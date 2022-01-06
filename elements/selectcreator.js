@@ -81,7 +81,7 @@ function createSelect (execlib, applib, templatelib, htmltemplateslib) {
   SelectElement.prototype.singleOptionMarkup = function (optiondata) {
     var titlevalue, valuevalue, optionscheck;
     titlevalue = this.getTitleValue(optiondata);
-    if (titlevalue) {
+    if (lib.isVal(titlevalue)) {
       valuevalue = this.getValueValue(optiondata);
       optionscheck = this.optionsMap.get(titlevalue);
       if (lib.isVal(optionscheck)) {
