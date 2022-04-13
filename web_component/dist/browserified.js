@@ -2087,6 +2087,9 @@ function createClickableMixin (lib, mylib) {
     if (!this.clickShouldHappen()) {
       return;
     }
+    if (!this.getConfigVal('allowDefault')) {
+      jqueryevent.preventDefault();
+    }
     this.clicked.fire.call(this.clicked, [jqueryevent, this.clickvalue]);
   };
   ClickableMixin.prototype.clickShouldHappen = function () {
