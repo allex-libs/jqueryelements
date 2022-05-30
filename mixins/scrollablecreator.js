@@ -89,32 +89,43 @@ function createScrollableMixin (lib, mylib) {
       return;
     }
     this.$element.scrollTop(9999999999);
-  }
-  ScrollableMixin.prototype.elementIsWithinTheScrollableArea = function (el, tolerance) {
-    /*
-    var st, ret, scrollTop, innerHeight, eltop, elheight;
-    st = this.getConfigVal('scroll_tolerance');
-    tolerance = lib.isNumber(tolerance) ? tolerance : (lib.isNumber(st) ? st : 0);
-    scrollTop = this.$element.scrollTop();
-    innerHeight = this.$element.innerHeight();
-    eltop = el.offset().top;
-    elheight = el.height();
-    if (eltop>=scrollTop && eltop+elheight<=scrollTop+innerHeight) {
-      return true;
-    }
-    return false;
-    */
-    var mytop, myheight, eltop, elheight;
-    if (!this.$element) {
-      return false;
-    }
-    mytop = this.$element.position().top;
-    myheight = this.$element.innerHeight();
-    eltop = el.position().top - mytop;
-    elheight = el.outerHeight();
-    //console.log('within?', el.attr('allexid'), 'eltop', eltop, 'elheight', elheight, 'vs myheight', myheight);
-    return (eltop>=0) && (eltop+elheight<=myheight);
   };
+  ScrollableMixin.prototype.elementIsWithinTheScrollableArea = function (el, tolerance) {
+    var gr = new GeometryReader(this, el), ret = gr.isChildWithinVisible();
+    gr.destroy();
+    return ret;
+  };
+  ScrollableMixin.prototype.scrollToSeeElementAtBottom = function (el) {
+    var gr = new GeometryReader(this, el), scrolltop = gr.scrollTopForChildAtBottom();
+    dumpGeometriesForChildren.call(this);
+    console.log('should scrolltop', scrolltop, 'gr', gr, 'current', this.$element.scrollTop());
+    this.$element.scrollTop(scrolltop);
+    console.log('finally', this.$element.scrollTop());
+    gr.destroy();
+  };
+
+  //helper classes
+  function GeometryReader (scrollable, elem) {
+    this.scrolltop = scrollable.$element.scrollTop();
+    this.mastertop = scrollable.$element.position().top;
+    this.masterheight = scrollable.$element.innerHeight();
+    this.childtop = elem.position().top - this.mastertop;
+    this.childheight = elem.outerHeight();
+  }
+  GeometryReader.prototype.destroy = function () {
+    this.childheight = null;
+    this.childtop = null;
+    this.masterheight = null;
+    this.mastertop = null;
+    this.scrolltop = null;
+  };
+  GeometryReader.prototype.isChildWithinVisible = function () {
+    return this.childtop >=0 && (this.childtop+this.childheight < this.masterheight);
+  };
+  GeometryReader.prototype.scrollTopForChildAtBottom = function () {
+    return this.scrolltop + (this.childtop+this.childheight) - this.masterheight;
+  };
+  //helper classes end
 
   //static
   function elementScrolledChecker (tolerance) {
@@ -146,6 +157,16 @@ function createScrollableMixin (lib, mylib) {
     }
     return ret;
   }
+  function dumpGeometriesForChildren () {
+    console.log('children dump');
+    this.$element.children().each(childGeometryDumper.bind(this));
+  }
+  function childGeometryDumper (index, el) {
+    var gr = new GeometryReader(this, jQuery(el));
+    console.log(gr);
+    gr.destroy();
+  }
+  //static end
 
   ScrollableMixin.addMethods = function (klass) {
     lib.inheritMethods(klass, ScrollableMixin
@@ -160,6 +181,7 @@ function createScrollableMixin (lib, mylib) {
       ,'scrollBottomIfSmallerHeight'
       ,'scrollElementToBottomUnknown'
       ,'elementIsWithinTheScrollableArea'
+      ,'scrollToSeeElementAtBottom'
     );
     klass.prototype.postInitializationMethodNames = klass.prototype.postInitializationMethodNames.concat('startListeningToElementScroll');
   };
