@@ -951,6 +951,9 @@ function createWebElement (execlib, applib, templatelib) {
       classestoset.forEach(classsetterifnotpresent.bind(null, elem));
       elem = null;
     }
+    if (this.shouldHideMarkupOnCreation()) {
+      this.$element.hide();
+    }
   };
 
   function classsetterifnotpresent (elem, classname) {
@@ -1340,6 +1343,10 @@ function createWebElement (execlib, applib, templatelib) {
 
   WebElement.prototype.raiseEvent = function () {
     this.$element.trigger.apply(this.$element, arguments);
+  };
+
+  WebElement.prototype.shouldHideMarkupOnCreation = function () {
+    return true;
   };
 
   WebElement.prototype.preInitializationMethodNames = BasicElement.prototype.preInitializationMethodNames.concat('doThejQueryCreation');
