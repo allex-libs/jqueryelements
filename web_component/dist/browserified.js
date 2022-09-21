@@ -1346,7 +1346,7 @@ function createWebElement (execlib, applib, templatelib) {
   };
 
   WebElement.prototype.shouldHideMarkupOnCreation = function () {
-    return true;
+    return !this.getConfigVal('actualnotvisual');
   };
 
   WebElement.prototype.preInitializationMethodNames = BasicElement.prototype.preInitializationMethodNames.concat('doThejQueryCreation');
