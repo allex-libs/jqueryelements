@@ -3,7 +3,7 @@ function createReadFileJob (lib, mylib) {
 
   var JobOnDestroyable = lib.qlib.JobOnDestroyable;
 
-  function FileRepresentation (file) {
+  function FileRepresentation (file, evnt) {
     this.name = file.name;
     this.lastModified = file.lastModified;
     this.size = file.size;
@@ -46,11 +46,11 @@ function createReadFileJob (lib, mylib) {
   ReadFileJob.prototype.init = function () {
     if (!this.file) {
       this.reject(new lib.Error('NO_FILE_TO_READ', 'There is no file to read'));
-      return ok.val;
+      return;
     }
     if (this.file.type.match('image.*')) {
       this.reader.readAsDataURL(this.file);
-      return ok.val;
+      return;
     }
     this.reader.readAsText(this.file, 'UTF-8');
   };

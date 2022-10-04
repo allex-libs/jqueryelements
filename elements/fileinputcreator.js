@@ -50,7 +50,7 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
     if (!this.$fileinputelement) {
       return;
     }
-    files = Array.prototype.slice.call(files);
+    files = Array.prototype.slice.call(this.$fileinputelement.files);
     q.all(files.map(this.readFile.bind(this))).then(
       this.set.bind(this, 'files'),
       console.error.bind(console, 'readFile Error')
