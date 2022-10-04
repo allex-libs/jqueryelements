@@ -3,6 +3,20 @@ function createReadFileJob (lib, mylib) {
 
   var JobOnDestroyable = lib.qlib.JobOnDestroyable;
 
+  function FileRepresentation (file, evnt) {
+    this.name = file.name;
+    this.lastModified = file.lastModified;
+    this.size = file.size;
+    this.type = file.type;
+    this.contents = (evnt && evnt.target && evnt.target.result) ? evnt.target.result : null;
+  }
+  FileRepresentation.prototype.destroy = function () {
+    this.type = null;
+    this.size = null;
+    this.lastModified = null;
+    this.name = null;
+  };
+
   function ReadFileJob (elem, file, defer) {
     JobOnDestroyable.call(this, elem, defer);
     this.file = file;
@@ -26,37 +40,25 @@ function createReadFileJob (lib, mylib) {
     if (!ok.ok) {
       return ok.val;
     }
+    lib.runNext(this.init.bind(this));
+    return ok.val;
+  };
+  ReadFileJob.prototype.init = function () {
     if (!this.file) {
       this.reject(new lib.Error('NO_FILE_TO_READ', 'There is no file to read'));
-      return ok.val;
+      return;
     }
     if (this.file.type.match('image.*')) {
       this.reader.readAsDataURL(this.file);
-      return ok.val;
+      return;
     }
     this.reader.readAsText(this.file, 'UTF-8');
-    return ok.val;
   };
   ReadFileJob.prototype.onLoaded = function (evnt) {
     if (!this.okToProceed()) {
       return;
     }
-    if (!(evnt && evnt.target && evnt.target.result)) {
-      this.resolve({
-        name: this.file.name,
-        lastModified: this.file.lastModified,
-        size: this.file.size,
-        type: this.file.type
-      });
-      return;
-    }
-    this.resolve({
-      name: this.file.name,
-      lastModified: this.file.lastModified,
-      size: this.file.size,
-      type: this.file.type,
-      contents: evnt.target.result
-    });
+    this.resolve(new FileRepresentation(this.file, evnt));
   };
   ReadFileJob.prototype.onProgress = function (evnt) {
     if (!(evnt && evnt.lengthComputable)) {

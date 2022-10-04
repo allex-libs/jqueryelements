@@ -13,6 +13,7 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
     //options.default_markup = options.default_markup || createDefaultMarkup(options);
     DomElement.call(this, id, options);
     this.gotFiles = new lib.HookCollection();
+    this.files = null;
     this.$fileinputelement = null;
   }
   lib.inherit(FileInputElement, DomElement);
@@ -21,6 +22,7 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
       this.$fileinputelement.onchange = null;
     }
     this.$fileinputelement = null;
+    this.files = null;
     if (this.gotFiles) {
       this.gotFiles.destroy();
     }
@@ -36,6 +38,11 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
       }
     }
   };
+  FileInputElement.prototype.set_files = function (files) {
+    this.gotFiles.fire(files);
+    this.files = files;
+    return true;
+  };
   FileInputElement.prototype.onFileChanged = function (evnt) {
     var files;
     evnt.preventDefault();
@@ -45,7 +52,7 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
     }
     files = Array.prototype.slice.call(this.$fileinputelement.files);
     q.all(files.map(this.readFile.bind(this))).then(
-      this.gotFiles.fire.bind(this.gotFiles),
+      this.set.bind(this, 'files'),
       console.error.bind(console, 'readFile Error')
     );
   };
