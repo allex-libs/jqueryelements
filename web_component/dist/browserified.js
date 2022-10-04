@@ -275,6 +275,7 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
     //options.default_markup = options.default_markup || createDefaultMarkup(options);
     DomElement.call(this, id, options);
     this.gotFiles = new lib.HookCollection();
+    this.files = null;
     this.$fileinputelement = null;
   }
   lib.inherit(FileInputElement, DomElement);
@@ -283,6 +284,7 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
       this.$fileinputelement.onchange = null;
     }
     this.$fileinputelement = null;
+    this.files = null;
     if (this.gotFiles) {
       this.gotFiles.destroy();
     }
@@ -298,6 +300,11 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
       }
     }
   };
+  FileInputElement.prototype.set_files = function (files) {
+    this.gotFiles.fire(files);
+    this.files = files;
+    return true;
+  };
   FileInputElement.prototype.onFileChanged = function (evnt) {
     var files;
     evnt.preventDefault();
@@ -305,9 +312,9 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
     if (!this.$fileinputelement) {
       return;
     }
-    files = Array.prototype.slice.call(this.$fileinputelement.files);
+    files = Array.prototype.slice.call(files);
     q.all(files.map(this.readFile.bind(this))).then(
-      this.gotFiles.fire.bind(this.gotFiles),
+      this.set.bind(this, 'files'),
       console.error.bind(console, 'readFile Error')
     );
   };
@@ -516,6 +523,20 @@ function createReadFileJob (lib, mylib) {
 
   var JobOnDestroyable = lib.qlib.JobOnDestroyable;
 
+  function FileRepresentation (file) {
+    this.name = file.name;
+    this.lastModified = file.lastModified;
+    this.size = file.size;
+    this.type = file.type;
+    this.contents = (evnt && evnt.target && evnt.target.result) ? evnt.target.result : null;
+  }
+  FileRepresentation.prototype.destroy = function () {
+    this.type = null;
+    this.size = null;
+    this.lastModified = null;
+    this.name = null;
+  };
+
   function ReadFileJob (elem, file, defer) {
     JobOnDestroyable.call(this, elem, defer);
     this.file = file;
@@ -539,6 +560,10 @@ function createReadFileJob (lib, mylib) {
     if (!ok.ok) {
       return ok.val;
     }
+    lib.runNext(this.init.bind(this));
+    return ok.val;
+  };
+  ReadFileJob.prototype.init = function () {
     if (!this.file) {
       this.reject(new lib.Error('NO_FILE_TO_READ', 'There is no file to read'));
       return ok.val;
@@ -548,28 +573,12 @@ function createReadFileJob (lib, mylib) {
       return ok.val;
     }
     this.reader.readAsText(this.file, 'UTF-8');
-    return ok.val;
   };
   ReadFileJob.prototype.onLoaded = function (evnt) {
     if (!this.okToProceed()) {
       return;
     }
-    if (!(evnt && evnt.target && evnt.target.result)) {
-      this.resolve({
-        name: this.file.name,
-        lastModified: this.file.lastModified,
-        size: this.file.size,
-        type: this.file.type
-      });
-      return;
-    }
-    this.resolve({
-      name: this.file.name,
-      lastModified: this.file.lastModified,
-      size: this.file.size,
-      type: this.file.type,
-      contents: evnt.target.result
-    });
+    this.resolve(new FileRepresentation(this.file, evnt));
   };
   ReadFileJob.prototype.onProgress = function (evnt) {
     if (!(evnt && evnt.lengthComputable)) {
