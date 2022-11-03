@@ -22,6 +22,9 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
       this.$fileinputelement.onchange = null;
     }
     this.$fileinputelement = null;
+    if (lib.isArray(this.files)) {
+      lib.arryDestroyAll(this.files);
+    }
     this.files = null;
     if (this.gotFiles) {
       this.gotFiles.destroy();
@@ -39,6 +42,9 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
     }
   };
   FileInputElement.prototype.set_files = function (files) {
+    if (lib.isArray(this.files)) {
+      lib.arryDestroyAll(this.files);
+    }
     this.gotFiles.fire(files);
     this.files = files;
     return true;
@@ -57,10 +63,13 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
     );
   };
   FileInputElement.prototype.resetInput = function () {
+    var evnt;
     if (!this.destroyed) {
       return;
     }
-    this.$fileinputelement.value = '';
+    this.$fileinputelement.value = null;
+    evnt = new Event('change');
+    this.$fileinputelement.dispatchEvent(evnt);
   };
   FileInputElement.prototype.readFile = function (file) {
     return (new jobs.ReadFileJob(this, file)).go();

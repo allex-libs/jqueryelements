@@ -3,30 +3,68 @@ function createReadFileJob (lib, mylib) {
 
   var JobOnDestroyable = lib.qlib.JobOnDestroyable;
 
-  function FileRepresentation (file, evnt) {
+  function humanReadableFileSize(bytes, si=false, dp=1) {
+    const thresh = si ? 1000 : 1024;
+  
+    if (Math.abs(bytes) < thresh) {
+      return bytes + ' B';
+    }
+  
+    const units = si 
+      ? ['kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'] 
+      : ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
+    let u = -1;
+    const r = 10**dp;
+  
+    do {
+      bytes /= thresh;
+      ++u;
+    } while (Math.round(Math.abs(bytes) * r) / r >= thresh && u < units.length - 1);
+  
+  
+    return bytes.toFixed(dp) + ' ' + units[u];
+  }
+
+  function FileRepresentation (binary, file, evnt) {
+    this.binary = binary;
     this.name = file.name;
     this.lastModified = file.lastModified;
     this.size = file.size;
+    this.humanReadableSize = humanReadableFileSize(file.size);
     this.type = file.type;
     this.contents = (evnt && evnt.target && evnt.target.result) ? evnt.target.result : null;
   }
   FileRepresentation.prototype.destroy = function () {
+    this.contents = null;
     this.type = null;
+    this.humanReadableSize = null;
     this.size = null;
     this.lastModified = null;
     this.name = null;
+    this.binary = null;
+  };
+  FileRepresentation.prototype.lineCount = function () {
+    if (this.binary) {
+      return null;
+    }
+    return this.contents.split('\n').length;
+  }
+  FileRepresentation.prototype.lines = function () {
+
   };
 
   function ReadFileJob (elem, file, defer) {
     JobOnDestroyable.call(this, elem, defer);
     this.file = file;
     this.reader = new FileReader();
+    this.binary = null;
     this.reader.onload = this.onLoaded.bind(this);
     this.reader.onerror = this.reject.bind(this);
     this.reader.onprogress = this.onProgress.bind(this);
   }
   lib.inherit(ReadFileJob, JobOnDestroyable);
   ReadFileJob.prototype.destroy = function () {
+    this.binary = null;
     if (this.reader) {
       this.reader.onload = null;
       this.reader.onerror = null;
@@ -49,16 +87,18 @@ function createReadFileJob (lib, mylib) {
       return;
     }
     if (this.file.type.match('image.*')) {
+      this.binary = true;
       this.reader.readAsDataURL(this.file);
       return;
     }
+    this.binary = false;
     this.reader.readAsText(this.file, 'UTF-8');
   };
   ReadFileJob.prototype.onLoaded = function (evnt) {
     if (!this.okToProceed()) {
       return;
     }
-    this.resolve(new FileRepresentation(this.file, evnt));
+    this.resolve(new FileRepresentation(this.binary, this.file, evnt));
   };
   ReadFileJob.prototype.onProgress = function (evnt) {
     if (!(evnt && evnt.lengthComputable)) {

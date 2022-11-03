@@ -9,7 +9,7 @@ lR.register('allex_jqueryelementslib',require('./libindex')(
   lR.get('allex_formvalidationlib')
 ));
 
-},{"./libindex":23}],2:[function(require,module,exports){
+},{"./libindex":24}],2:[function(require,module,exports){
 function createCanvas (execlib, applib, templatelib, htmltemplateslib) {
 
   'use strict';
@@ -64,6 +64,48 @@ function createCanvas (execlib, applib, templatelib, htmltemplateslib) {
 module.exports = createCanvas;
 
 },{}],3:[function(require,module,exports){
+function createCheckBoxElement (execlib, applib, templatelib, htmltemplateslib, mixins) {
+  'use strict';
+
+  var lib = execlib.lib,
+  DomElement = applib.getElementType('DomElement');
+
+function CheckBoxElement (id, options) {
+  DomElement.call(this, id, options);
+  this.checked = null;
+}
+lib.inherit(CheckBoxElement, DomElement);
+CheckBoxElement.prototype.__cleanUp = function () {
+  this.checked = null;
+  DomElement.prototype.__cleanUp.call(this);
+};
+
+CheckBoxElement.prototype.get_checked = function () {
+  return this.checked;
+};
+CheckBoxElement.prototype.set_checked = function (chk) {
+  this.checked = chk;
+  return true;
+};
+
+CheckBoxElement.prototype.onElementInputChanged = function () {
+  this.set('checked', this.$element.is(':checked'));
+};
+
+CheckBoxElement.prototype.initInput = function () {
+  this.$element.on('change', this.onElementInputChanged.bind(this));
+};
+
+CheckBoxElement.prototype.postInitializationMethodNames =
+      CheckBoxElement.prototype.postInitializationMethodNames.concat('initInput');
+
+CheckBoxElement.prototype.optionsConfigName = 'checkboxinput';
+CheckBoxElement.prototype.htmlTemplateName = 'checkboxinput';
+
+applib.registerElementType('CheckBoxElement', CheckBoxElement);
+}
+module.exports = createCheckBoxElement;
+},{}],4:[function(require,module,exports){
 function createClickable (execlib, applib, templatelib, htmltemplateslib, mymixins) {
   'use strict';
 
@@ -100,7 +142,7 @@ function createClickable (execlib, applib, templatelib, htmltemplateslib, mymixi
 
 module.exports = createClickable;
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 function createDataAwareChildElement (execlib, DataElementFollowerMixin, applib) {
   'use strict';
 
@@ -127,7 +169,7 @@ function createDataAwareChildElement (execlib, DataElementFollowerMixin, applib)
 
 module.exports = createDataAwareChildElement;
 
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 function createDataAwareElement (execlib, DataElementMixIn, applib) {
   'use strict';
 
@@ -199,7 +241,7 @@ function createDataAwareElement (execlib, DataElementMixIn, applib) {
 
 module.exports = createDataAwareElement;
 
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 function createDivElement (execlib, applib, templatelib, htmltemplateslib) {
   'use strict';
 
@@ -217,7 +259,7 @@ function createDivElement (execlib, applib, templatelib, htmltemplateslib) {
 }
 module.exports = createDivElement;
 
-},{}],7:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 function createDomElement (execlib, applib, templatelib, htmltemplateslib) {
 
   'use strict';
@@ -259,7 +301,7 @@ function createDomElement (execlib, applib, templatelib, htmltemplateslib) {
 }
 module.exports = createDomElement;
 
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 function createFileInputElement (execlib, applib, templateslitelib, htmltemplateslib, jobs) {
   'use strict';
 
@@ -284,6 +326,9 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
       this.$fileinputelement.onchange = null;
     }
     this.$fileinputelement = null;
+    if (lib.isArray(this.files)) {
+      lib.arryDestroyAll(this.files);
+    }
     this.files = null;
     if (this.gotFiles) {
       this.gotFiles.destroy();
@@ -301,6 +346,9 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
     }
   };
   FileInputElement.prototype.set_files = function (files) {
+    if (lib.isArray(this.files)) {
+      lib.arryDestroyAll(this.files);
+    }
     this.gotFiles.fire(files);
     this.files = files;
     return true;
@@ -319,10 +367,13 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
     );
   };
   FileInputElement.prototype.resetInput = function () {
+    var evnt;
     if (!this.destroyed) {
       return;
     }
-    this.$fileinputelement.value = '';
+    this.$fileinputelement.value = null;
+    evnt = new Event('change');
+    this.$fileinputelement.dispatchEvent(evnt);
   };
   FileInputElement.prototype.readFile = function (file) {
     return (new jobs.ReadFileJob(this, file)).go();
@@ -351,7 +402,7 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
 }
 module.exports = createFileInputElement;
 
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 function createFromDataCreator (execlib, applib, mixins) {
   'use strict';
 
@@ -391,7 +442,7 @@ function createFromDataCreator (execlib, applib, mixins) {
 
 module.exports = createFromDataCreator;
 
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 function createImg (execlib, applib, templatelib, htmltemplateslib) {
 
   'use strict';
@@ -479,7 +530,7 @@ function createImg (execlib, applib, templatelib, htmltemplateslib) {
 }
 module.exports = createImg;
 
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 function createElements (execlib, applib, templatelib, htmltemplateslib, formvalidationlib, mixins) {
   'use strict';
 
@@ -496,6 +547,7 @@ function createElements (execlib, applib, templatelib, htmltemplateslib, formval
   require('./imgcreator')(execlib, applib, templatelib, htmltemplateslib);
   require('./fileinputcreator')(execlib, applib, templatelib, htmltemplateslib, jobs);
   require('./clickablecreator')(execlib, applib, templatelib, htmltemplateslib, mixins);
+  require('./checkboxcreator')(execlib, applib, templatelib, htmltemplateslib, mixins);
 
   require('./selectcreator')(execlib, applib, templatelib, htmltemplateslib, mixins);
   require('./nonbiunivocalselectcreator')(execlib, applib, templatelib, htmltemplateslib, mixins);
@@ -505,7 +557,7 @@ function createElements (execlib, applib, templatelib, htmltemplateslib, formval
 
 module.exports = createElements;
 
-},{"./canvascreator":2,"./clickablecreator":3,"./dataawarechildcreator":4,"./dataawareelementcreator":5,"./divcreator":6,"./domelementcreator":7,"./fileinputcreator":8,"./fromdatacreatorcreator":9,"./imgcreator":10,"./jobs":12,"./nonbiunivocalselectcreator":14,"./selectcreator":15,"./splashcreator":16,"./webelementcreator":17}],12:[function(require,module,exports){
+},{"./canvascreator":2,"./checkboxcreator":3,"./clickablecreator":4,"./dataawarechildcreator":5,"./dataawareelementcreator":6,"./divcreator":7,"./domelementcreator":8,"./fileinputcreator":9,"./fromdatacreatorcreator":10,"./imgcreator":11,"./jobs":13,"./nonbiunivocalselectcreator":15,"./selectcreator":16,"./splashcreator":17,"./webelementcreator":18}],13:[function(require,module,exports){
 function createJobs (lib) {
   'use strict';
 
@@ -517,36 +569,74 @@ function createJobs (lib) {
 }
 module.exports = createJobs;
 
-},{"./readfilecreator":13}],13:[function(require,module,exports){
+},{"./readfilecreator":14}],14:[function(require,module,exports){
 function createReadFileJob (lib, mylib) {
   'use strict';
 
   var JobOnDestroyable = lib.qlib.JobOnDestroyable;
 
-  function FileRepresentation (file, evnt) {
+  function humanReadableFileSize(bytes, si=false, dp=1) {
+    const thresh = si ? 1000 : 1024;
+  
+    if (Math.abs(bytes) < thresh) {
+      return bytes + ' B';
+    }
+  
+    const units = si 
+      ? ['kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'] 
+      : ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
+    let u = -1;
+    const r = 10**dp;
+  
+    do {
+      bytes /= thresh;
+      ++u;
+    } while (Math.round(Math.abs(bytes) * r) / r >= thresh && u < units.length - 1);
+  
+  
+    return bytes.toFixed(dp) + ' ' + units[u];
+  }
+
+  function FileRepresentation (binary, file, evnt) {
+    this.binary = binary;
     this.name = file.name;
     this.lastModified = file.lastModified;
     this.size = file.size;
+    this.humanReadableSize = humanReadableFileSize(file.size);
     this.type = file.type;
     this.contents = (evnt && evnt.target && evnt.target.result) ? evnt.target.result : null;
   }
   FileRepresentation.prototype.destroy = function () {
+    this.contents = null;
     this.type = null;
+    this.humanReadableSize = null;
     this.size = null;
     this.lastModified = null;
     this.name = null;
+    this.binary = null;
+  };
+  FileRepresentation.prototype.lineCount = function () {
+    if (this.binary) {
+      return null;
+    }
+    return this.contents.split('\n').length;
+  }
+  FileRepresentation.prototype.lines = function () {
+
   };
 
   function ReadFileJob (elem, file, defer) {
     JobOnDestroyable.call(this, elem, defer);
     this.file = file;
     this.reader = new FileReader();
+    this.binary = null;
     this.reader.onload = this.onLoaded.bind(this);
     this.reader.onerror = this.reject.bind(this);
     this.reader.onprogress = this.onProgress.bind(this);
   }
   lib.inherit(ReadFileJob, JobOnDestroyable);
   ReadFileJob.prototype.destroy = function () {
+    this.binary = null;
     if (this.reader) {
       this.reader.onload = null;
       this.reader.onerror = null;
@@ -569,16 +659,18 @@ function createReadFileJob (lib, mylib) {
       return;
     }
     if (this.file.type.match('image.*')) {
+      this.binary = true;
       this.reader.readAsDataURL(this.file);
       return;
     }
+    this.binary = false;
     this.reader.readAsText(this.file, 'UTF-8');
   };
   ReadFileJob.prototype.onLoaded = function (evnt) {
     if (!this.okToProceed()) {
       return;
     }
-    this.resolve(new FileRepresentation(this.file, evnt));
+    this.resolve(new FileRepresentation(this.binary, this.file, evnt));
   };
   ReadFileJob.prototype.onProgress = function (evnt) {
     if (!(evnt && evnt.lengthComputable)) {
@@ -591,7 +683,7 @@ function createReadFileJob (lib, mylib) {
 }
 module.exports = createReadFileJob;
 
-},{}],14:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 function createNonBiunivocalSelect (execlib, applib, templatelib, htmltemplateslib, mixins) {
   'use strict';
 
@@ -654,7 +746,7 @@ function createNonBiunivocalSelect (execlib, applib, templatelib, htmltemplatesl
   applib.registerElementType('NonBiunivocalSelectElement', NonBiunivocalSelectElement);
 }
 module.exports = createNonBiunivocalSelect;
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 function createSelect (execlib, applib, templatelib, htmltemplateslib) {
   'use strict';
 
@@ -790,7 +882,7 @@ function createSelect (execlib, applib, templatelib, htmltemplateslib) {
 }
 module.exports = createSelect;
 
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 function createSplashElement (execlib, applib, templatelib, htmltemplateslib) {
   'use strict';
 
@@ -813,7 +905,7 @@ function createSplashElement (execlib, applib, templatelib, htmltemplateslib) {
 }
 module.exports = createSplashElement;
 
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 function createWebElement (execlib, applib, templatelib) {
   'use strict';
 
@@ -1422,7 +1514,7 @@ function createWebElement (execlib, applib, templatelib) {
 
 module.exports = createWebElement;
 
-},{}],18:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 function createHandlers (execlib, applib, linkinglib) {
   'use strict';
 
@@ -1615,7 +1707,7 @@ function createHandlers (execlib, applib, linkinglib) {
 
 module.exports = createHandlers;
 
-},{}],19:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 function createHelpers (execlib) {
   'use strict';
 
@@ -1628,7 +1720,7 @@ function createHelpers (execlib) {
 }
 module.exports = createHelpers;
 
-},{"./inputlistenercreator":20,"./jquerytraversalscreator":21}],20:[function(require,module,exports){
+},{"./inputlistenercreator":21,"./jquerytraversalscreator":22}],21:[function(require,module,exports){
 function createInputListener (lib, mylib) {
   'use strict';
 
@@ -1675,7 +1767,7 @@ function createInputListener (lib, mylib) {
 }
 module.exports = createInputListener;
 
-},{}],21:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 function createjQueryTraversals (lib, mylib) {
   'use strict';
 
@@ -1761,7 +1853,7 @@ function createjQueryTraversals (lib, mylib) {
   mylib.jQueryPick = jQueryPick;
 }
 module.exports = createjQueryTraversals;
-},{}],22:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 function createJQueryCreate (execlib, templatelib) {
   'use stict';
 
@@ -1783,7 +1875,7 @@ function createJQueryCreate (execlib, templatelib) {
 
 module.exports = createJQueryCreate;
 
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 /**
  * A library that uses {@link allex://allex_applib} and jQuery
  * to build the basic Web App functionality.
@@ -1833,7 +1925,7 @@ function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib, 
 
 module.exports = createLib;
 
-},{"./elements":11,"./handlers":18,"./helpers":19,"./jquerycreatecreator":22,"./misc/router":24,"./mixins":26,"./modifiers/routecontrollercreator":30,"./modifiers/selectorcreator":31,"./preprocessors/dataviewcreator":32,"./preprocessors/keyboardcreator":33,"./preprocessors/logoutdeactivatorcreator":34,"./preprocessors/pipelinecreator":35,"./preprocessors/roleroutercreator":36,"./preprocessors/tabviewcreator":37,"./resources/fontloadercreator":38,"./resources/throbbercreator":39,"./resources/urlgeneratorcreator":40}],24:[function(require,module,exports){
+},{"./elements":12,"./handlers":19,"./helpers":20,"./jquerycreatecreator":23,"./misc/router":25,"./mixins":27,"./modifiers/routecontrollercreator":31,"./modifiers/selectorcreator":32,"./preprocessors/dataviewcreator":33,"./preprocessors/keyboardcreator":34,"./preprocessors/logoutdeactivatorcreator":35,"./preprocessors/pipelinecreator":36,"./preprocessors/roleroutercreator":37,"./preprocessors/tabviewcreator":38,"./resources/fontloadercreator":39,"./resources/throbbercreator":40,"./resources/urlgeneratorcreator":41}],25:[function(require,module,exports){
 function createRouterLib (allex) {
   'use strict';
 
@@ -2078,16 +2170,18 @@ function createRouterLib (allex) {
 
 module.exports = createRouterLib;
 
-},{}],25:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 function createClickableMixin (lib, mylib) {
   'use strict';
 
   function ClickableMixin (options) {
     this.clicked = new lib.HookCollection();
     this.clickvalue = null;
+    /*
     if (options && ('enabled' in options)) {
       this.set('enabled', options.enabled);
     }
+    */
   }
   ClickableMixin.prototype.destroy = function () {
     this.clickvalue = null;
@@ -2098,6 +2192,9 @@ function createClickableMixin (lib, mylib) {
   };
   ClickableMixin.prototype.initClickable = function () {
     this.$element.on('click', this.onElementClicked.bind(this));
+    if ('enabled' in this.config) {
+      this.set_enabled(this.getConfigVal('enabled'));
+    }
   };
   ClickableMixin.prototype.onElementClicked = function (jqueryevent) {
     if (!this.clickShouldHappen()) {
@@ -2181,7 +2278,7 @@ function createClickableMixin (lib, mylib) {
 }
 module.exports = createClickableMixin;
 
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 function createMixins (execlib) {
   'use strict';
 
@@ -2197,7 +2294,7 @@ function createMixins (execlib) {
 }
 module.exports = createMixins;
 
-},{"./clickablecreator":25,"./scrollablecreator":27,"./searchablecreator":28,"./siblingmanipulatorcreator":29}],27:[function(require,module,exports){
+},{"./clickablecreator":26,"./scrollablecreator":28,"./searchablecreator":29,"./siblingmanipulatorcreator":30}],28:[function(require,module,exports){
 function createScrollableMixin (lib, mylib) {
   'use strict';
 
@@ -2390,7 +2487,7 @@ function createScrollableMixin (lib, mylib) {
 }
 module.exports = createScrollableMixin;
 
-},{}],28:[function(require,module,exports){
+},{}],29:[function(require,module,exports){
 function createSearchableMixin (lib, mylib) {
   'use strict';
 
@@ -2429,7 +2526,7 @@ function createSearchableMixin (lib, mylib) {
 }
 module.exports = createSearchableMixin;
 
-},{}],29:[function(require,module,exports){
+},{}],30:[function(require,module,exports){
 function createSiblingManipulatorMutex (lib, mylib) {
   'use strict';
 
@@ -2507,7 +2604,7 @@ function createSiblingManipulatorMutex (lib, mylib) {
 }
 module.exports = createSiblingManipulatorMutex;
 
-},{}],30:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 function createRouteController (allex, applib) {
   'use strict';
 
@@ -2535,7 +2632,7 @@ function createRouteController (allex, applib) {
 
 module.exports = createRouteController;
 
-},{}],31:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
 function createSelectorModifier (allex, applib) {
   'use strict';
 
@@ -2595,7 +2692,7 @@ function createSelectorModifier (allex, applib) {
 
 module.exports = createSelectorModifier;
 
-},{}],32:[function(require,module,exports){
+},{}],33:[function(require,module,exports){
 function createDataViewProcessor (allex, applib) {
   'use strict';
 
@@ -2680,7 +2777,7 @@ function createDataViewProcessor (allex, applib) {
 
 module.exports = createDataViewProcessor;
 
-},{}],33:[function(require,module,exports){
+},{}],34:[function(require,module,exports){
 function createKeyboardProcessor (allex, applib) {
   'use strict';
 
@@ -2736,7 +2833,7 @@ function createKeyboardProcessor (allex, applib) {
 
 module.exports = createKeyboardProcessor;
 
-},{}],34:[function(require,module,exports){
+},{}],35:[function(require,module,exports){
 function createLogoutDeactivatorProcessor (allex, applib) {
   'use strict';
   var lib = allex.lib,
@@ -2823,7 +2920,7 @@ function createLogoutDeactivatorProcessor (allex, applib) {
 
 module.exports = createLogoutDeactivatorProcessor;
 
-},{}],35:[function(require,module,exports){
+},{}],36:[function(require,module,exports){
 function createPipelineProcessor (allex, applib) {
   'use strict';
   var lib = allex.lib,
@@ -3187,7 +3284,7 @@ function createPipelineProcessor (allex, applib) {
 module.exports = createPipelineProcessor;
 
 
-},{}],36:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
 function createRoleRouterPreprocessor (allex, routerlib, applib) {
   'use strict';
   var lib = allex.lib,
@@ -3352,7 +3449,7 @@ function createRoleRouterPreprocessor (allex, routerlib, applib) {
 
 module.exports = createRoleRouterPreprocessor;
 
-},{}],37:[function(require,module,exports){
+},{}],38:[function(require,module,exports){
 function createTabViewProcessor (allex, routerlib, applib, templatelib) {
   'use strict';
   var lib = allex.lib,
@@ -3517,7 +3614,7 @@ function createTabViewProcessor (allex, routerlib, applib, templatelib) {
 
 module.exports = createTabViewProcessor;
 
-},{}],38:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 function createFontLoader(allex, applib, $) {
   'use strict';
 
@@ -3575,7 +3672,7 @@ function createFontLoader(allex, applib, $) {
 
 module.exports = createFontLoader;
 
-},{}],39:[function(require,module,exports){
+},{}],40:[function(require,module,exports){
 function createThrobberResource (allex, applib) {
   'use strict';
 
@@ -3659,7 +3756,7 @@ function createThrobberResource (allex, applib) {
 
 module.exports = createThrobberResource;
 
-},{}],40:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 function createURLGeneratorResource (execlib, applib) {
   var lib = execlib.lib,
   BasicResourceLoader = applib.BasicResourceLoader,

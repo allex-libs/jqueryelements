@@ -4,9 +4,11 @@ function createClickableMixin (lib, mylib) {
   function ClickableMixin (options) {
     this.clicked = new lib.HookCollection();
     this.clickvalue = null;
+    /*
     if (options && ('enabled' in options)) {
       this.set('enabled', options.enabled);
     }
+    */
   }
   ClickableMixin.prototype.destroy = function () {
     this.clickvalue = null;
@@ -17,6 +19,9 @@ function createClickableMixin (lib, mylib) {
   };
   ClickableMixin.prototype.initClickable = function () {
     this.$element.on('click', this.onElementClicked.bind(this));
+    if ('enabled' in this.config) {
+      this.set_enabled(this.getConfigVal('enabled'));
+    }
   };
   ClickableMixin.prototype.onElementClicked = function (jqueryevent) {
     if (!this.clickShouldHappen()) {
