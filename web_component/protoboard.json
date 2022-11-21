@@ -18,6 +18,7 @@
       "allex:templateslite:lib",
       "allex:htmltemplates:lib",
       "allex:formvalidation:lib",
+      "allex:bufferedtrigger:lib",
       "node_modules/webfontloader/webfontloader.js"
     ]
   },

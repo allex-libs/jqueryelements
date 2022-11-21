@@ -78,7 +78,6 @@ function createFileInputElement (execlib, applib, templateslitelib, htmltemplate
     var reader = new FileReader(), _r = result;
     reader.readAsDataURL(file);
   };
-  //FileInputElement.prototype.optionsConfigName = 'fileinput';
   FileInputElement.prototype.optionsConfigName = 'fileinput';
   FileInputElement.prototype.createDefaultMarkup = function (htmltemplatename, options) {
     return o(m.div,

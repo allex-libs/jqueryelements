@@ -12,6 +12,7 @@ function createElements (execlib, applib, templatelib, htmltemplateslib, formval
   require('./divcreator')(execlib, applib, templatelib, htmltemplateslib);
   require('./canvascreator')(execlib, applib, templatelib, htmltemplateslib);
   require('./imgcreator')(execlib, applib, templatelib, htmltemplateslib);
+  require('./inputcreator')(execlib, applib, templatelib, htmltemplateslib, jobs);
   require('./fileinputcreator')(execlib, applib, templatelib, htmltemplateslib, jobs);
   require('./clickablecreator')(execlib, applib, templatelib, htmltemplateslib, mixins);
   require('./checkboxcreator')(execlib, applib, templatelib, htmltemplateslib, mixins);
