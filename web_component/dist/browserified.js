@@ -73,9 +73,11 @@ function createCheckBoxElement (execlib, applib, templatelib, htmltemplateslib, 
 function CheckBoxElement (id, options) {
   DomElement.call(this, id, options);
   this.checked = null;
+  this.internalChange = false;
 }
 lib.inherit(CheckBoxElement, DomElement);
 CheckBoxElement.prototype.__cleanUp = function () {
+  this.internalChange = null;
   this.checked = null;
   DomElement.prototype.__cleanUp.call(this);
 };
@@ -85,11 +87,16 @@ CheckBoxElement.prototype.get_checked = function () {
 };
 CheckBoxElement.prototype.set_checked = function (chk) {
   this.checked = chk;
+  if (this.$element) {
+    this.$element.prop('checked', !!chk);
+  }
   return true;
 };
 
 CheckBoxElement.prototype.onElementInputChanged = function () {
-  this.set('checked', this.$element.is(':checked'));
+  if (!this.internalChange) {
+    this.set('checked', this.$element.is(':checked'));
+  }
 };
 
 CheckBoxElement.prototype.initInput = function () {
