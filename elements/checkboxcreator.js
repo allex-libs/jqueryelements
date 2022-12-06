@@ -22,7 +22,9 @@ CheckBoxElement.prototype.get_checked = function () {
 CheckBoxElement.prototype.set_checked = function (chk) {
   this.checked = chk;
   if (this.$element) {
+    this.internalChange = true;
     this.$element.prop('checked', !!chk);
+    this.internalChange = false;
   }
   return true;
 };
@@ -35,6 +37,7 @@ CheckBoxElement.prototype.onElementInputChanged = function () {
 
 CheckBoxElement.prototype.initInput = function () {
   this.$element.on('change', this.onElementInputChanged.bind(this));
+  this.set('checked', this.getConfigVal('checked'));
 };
 
 CheckBoxElement.prototype.postInitializationMethodNames =

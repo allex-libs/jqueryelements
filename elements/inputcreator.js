@@ -33,7 +33,7 @@ function createInputElement (execlib, applib, templateslitelib, htmltemplateslib
     DomElement.prototype.__cleanUp.call(this);
   };
   InputElement.prototype.initializeOnDomElement = function () {
-    this.$element.on('change', this.onInputChanger);
+    this.$element.on('keyup', this.onInputChanger);
   };
 
   InputElement.prototype.get_value = function () {
@@ -65,6 +65,27 @@ function createInputElement (execlib, applib, templateslitelib, htmltemplateslib
   lib.inherit(TextInputElement, InputElement);
   TextInputElement.prototype.htmlTemplateName = 'textinput';
   applib.registerElementType('TextInputElement', TextInputElement);
+
+  function SearchInputElement (id, options) {
+    InputElement.call(this, id, options);
+  }
+  lib.inherit(SearchInputElement, InputElement);
+  SearchInputElement.prototype.initializeOnDomElement = function () {
+    InputElement.prototype.initializeOnDomElement.call(this);
+    this.$element.on('search', this.onInputChanger);
+  };
+  SearchInputElement.prototype.__cleanUp = function () {
+    if (this.$element) {
+      this.$element.off('search', this.onInputChanger);
+    }
+    InputElement.prototype.__cleanUp.call(this);
+  };
+  SearchInputElement.prototype.set_actual = function (act) {
+    this.set('value', null);
+    return InputElement.prototype.set_actual.call(this, act);
+  };
+  SearchInputElement.prototype.htmlTemplateName = 'searchinput';
+  applib.registerElementType('SearchInputElement', SearchInputElement);
 
   function PasswordInputElement (id, options) {
     InputElement.call(this, id, options);
