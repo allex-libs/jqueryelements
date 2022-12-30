@@ -37,8 +37,8 @@ function createWebElement (execlib, applib, templatelib) {
       if (this.elementCreatedByMe) {
         this.$element.remove();
       } else {
-        this.$element.removeAttr('allexid');
-        this.$element.removeAttr('allextype');
+        removeAttr(this.$element, 'allexid', this.get('id'));
+        removeAttr(this.$element, 'allextype', this.constructor.name);
         this.removeClassesSet();
       }
     }
@@ -130,8 +130,8 @@ function createWebElement (execlib, applib, templatelib) {
         console.error('on', this.findingElement());
         throw new Error('Unable to find DOM element '+this.get('id')+' using jQuery selector '+selector+' ('+finder+') even after creation with default_markup '+this.getDefaultMarkup());
       }
+      this.elementCreatedByMe = true;
     }
-    this.elementCreatedByMe = true;
     /*
     this.$element.attr('allexid', this.get('id'));
     this.$element.attr('allextype', this.constructor.name);
