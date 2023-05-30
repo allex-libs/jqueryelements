@@ -603,14 +603,19 @@ function createInputElement (execlib, applib, templateslitelib, htmltemplateslib
     DomElement.prototype.__cleanUp.call(this);
   };
   InputElement.prototype.initializeOnDomElement = function () {
-    this.$element.on('keyup', this.onInputChanger);
+    var confval = this.getConfigVal('value');
+    if (lib.isVal(confval)) {
+      this.set('value', confval);
+    }
+    //this.$element.on('keyup', this.onInputChanger);
+    this.$element.on('input', this.onInputChanger);
   };
 
   InputElement.prototype.get_value = function () {
     return this.value;
   };
   InputElement.prototype.set_value = function (val) {
-    this.value = val;
+    this.value = this.valueForMe(val);
     if (!this.internalChange) {
       this.$element.val(val);
     }
@@ -624,6 +629,10 @@ function createInputElement (execlib, applib, templateslitelib, htmltemplateslib
   };
   InputElement.prototype.triggerInputChange = function (ev) {
     this.set('value', this.$element.val());
+  };
+
+  InputElement.prototype.valueForMe = function (val) {
+    return val;
   };
   InputElement.prototype.optionsConfigName = 'input';
   
@@ -668,6 +677,9 @@ function createInputElement (execlib, applib, templateslitelib, htmltemplateslib
     InputElement.call(this, id, options);
   }
   lib.inherit(NumberInputElement, InputElement);
+  NumberInputElement.prototype.valueForMe = function (val) {
+    return parseFloat(val);
+  };
   NumberInputElement.prototype.htmlTemplateName = 'numberinput';
   applib.registerElementType('NumberInputElement', NumberInputElement);
 
