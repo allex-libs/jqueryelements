@@ -9,7 +9,7 @@
  *
  * @namespace allex_jqueryelementslib
  */
-function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib, formvalidationlib) {
+function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib) {
   'use strict';
 
   var routerlib = require('./misc/router')(execlib),
@@ -23,7 +23,7 @@ function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib, 
   require('./resources/urlgeneratorcreator')(execlib, applib);
   require('./resources/throbbercreator')(execlib, applib);
 
-  require('./elements')(execlib, applib, templatelib, htmltemplateslib, formvalidationlib, mixins);
+  require('./elements')(execlib, applib, templatelib, htmltemplateslib, mixins);
 
   require('./modifiers/selectorcreator')(execlib, applib);
   require('./modifiers/routecontrollercreator')(execlib, applib);

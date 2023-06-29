@@ -5,8 +5,7 @@ lR.register('allex_jqueryelementslib',require('./libindex')(
   lR.get('allex_applib'),
   lR.get('allex_applinkinglib'),
   lR.get('allex_templateslitelib'),
-  lR.get('allex_htmltemplateslib'),
-  lR.get('allex_formvalidationlib')
+  lR.get('allex_htmltemplateslib')
 ));
 
 },{"./libindex":25}],2:[function(require,module,exports){
@@ -540,7 +539,7 @@ function createImg (execlib, applib, templatelib, htmltemplateslib) {
 module.exports = createImg;
 
 },{}],12:[function(require,module,exports){
-function createElements (execlib, applib, templatelib, htmltemplateslib, formvalidationlib, mixins) {
+function createElements (execlib, applib, templatelib, htmltemplateslib, mixins) {
   'use strict';
 
   var jobs = require('./jobs')(execlib.lib);
@@ -1067,6 +1066,8 @@ function createWebElement (execlib, applib, templatelib) {
     this._addHook ('onHidden');
     this._helpers = null;
     this._htmlcontent;
+    this._tooltiptext;
+    this._tooltip;
 
     var helperObj = this.getConfigVal ('helperObjects');
     for (var i in helperObj) {
@@ -1427,6 +1428,39 @@ function createWebElement (execlib, applib, templatelib) {
     return null;
   };
   //checked end
+
+  //tooltip start
+  WebElement.prototype.set_tooltip = function (ttip) {
+    if (this._tooltiptext == ttip) {
+      return false;
+    }
+    this.$element[ttip ? 'addClass' : 'removeClass']('allextooltipholder');
+    this._tooltiptext = ttip;
+    if (this.$element.is('input') || this.$element.is('img')) {
+      this.$element.attr('title', ttip);
+      return true;
+    }
+    if (ttip) {
+      if (this._tooltip) {
+        this.$element.html(ttip);
+      } else {
+        this._tooltip = jQuery('<span\>');
+        this._tooltip.addClass('allextooltiptext');
+        this._tooltip.html(ttip);
+        this.$element.append(this._tooltip);
+      }
+    } else {
+      if (this._tooltip) {
+        this._tooltip.detach();
+      }
+      this._tooltip = null;
+    }
+    return true;
+  };
+  WebElement.prototype.get_tooltip = function () {
+    return this._tooltiptext;
+  };
+  //tooltip end
 
   WebElement.prototype.onUnloaded = function () {
     BasicElement.prototype.onUnloaded.call(this);
@@ -2028,7 +2062,7 @@ module.exports = createJQueryCreate;
  *
  * @namespace allex_jqueryelementslib
  */
-function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib, formvalidationlib) {
+function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib) {
   'use strict';
 
   var routerlib = require('./misc/router')(execlib),
@@ -2042,7 +2076,7 @@ function createLib (execlib, applib, linkinglib, templatelib, htmltemplateslib, 
   require('./resources/urlgeneratorcreator')(execlib, applib);
   require('./resources/throbbercreator')(execlib, applib);
 
-  require('./elements')(execlib, applib, templatelib, htmltemplateslib, formvalidationlib, mixins);
+  require('./elements')(execlib, applib, templatelib, htmltemplateslib, mixins);
 
   require('./modifiers/selectorcreator')(execlib, applib);
   require('./modifiers/routecontrollercreator')(execlib, applib);

@@ -18,6 +18,8 @@ function createWebElement (execlib, applib, templatelib) {
     this._addHook ('onHidden');
     this._helpers = null;
     this._htmlcontent;
+    this._tooltiptext;
+    this._tooltip;
 
     var helperObj = this.getConfigVal ('helperObjects');
     for (var i in helperObj) {
@@ -378,6 +380,39 @@ function createWebElement (execlib, applib, templatelib) {
     return null;
   };
   //checked end
+
+  //tooltip start
+  WebElement.prototype.set_tooltip = function (ttip) {
+    if (this._tooltiptext == ttip) {
+      return false;
+    }
+    this.$element[ttip ? 'addClass' : 'removeClass']('allextooltipholder');
+    this._tooltiptext = ttip;
+    if (this.$element.is('input') || this.$element.is('img')) {
+      this.$element.attr('title', ttip);
+      return true;
+    }
+    if (ttip) {
+      if (this._tooltip) {
+        this.$element.html(ttip);
+      } else {
+        this._tooltip = jQuery('<span\>');
+        this._tooltip.addClass('allextooltiptext');
+        this._tooltip.html(ttip);
+        this.$element.append(this._tooltip);
+      }
+    } else {
+      if (this._tooltip) {
+        this._tooltip.detach();
+      }
+      this._tooltip = null;
+    }
+    return true;
+  };
+  WebElement.prototype.get_tooltip = function () {
+    return this._tooltiptext;
+  };
+  //tooltip end
 
   WebElement.prototype.onUnloaded = function () {
     BasicElement.prototype.onUnloaded.call(this);
