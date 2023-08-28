@@ -366,6 +366,21 @@ function createWebElement (execlib, applib, templatelib) {
   };
   //enabled end
 
+  //readonly start
+  WebElement.prototype.set_readonly = function (val) {
+    if (this.$element) {
+      this.$element.prop('readonly', val);
+    }
+    return true;
+  };
+  WebElement.prototype.get_readonly = function () {
+    if (this.$element) {
+      return this.$element.prop('readonly');
+    }
+    return null;
+  };
+  //readonly end
+  
   //checked start
   WebElement.prototype.set_checked = function (val) {
     if (this.$element) {
