@@ -2409,11 +2409,9 @@ function createClickableMixin (lib, mylib) {
     return true;
   };
   ClickableMixin.prototype.setEnabledOnAnchorFromClickable = function (val) {
-    if (!this.setEnabledOnButtonFromClickable(val)) {
-      this.$element.removeClass('disabled');
-      return false;
-    }
-    this.$element.addClass('disabled');
+    var ret = this.setEnabledOnButtonFromClickable(val);
+    this.$element[val ? 'removeClass' : 'addClass']('disabled');
+    return ret;
   };
   ClickableMixin.prototype.getEnabledOnButtonFromClickable = function () {
     return this.$element && !this.$element.prop('disabled');
