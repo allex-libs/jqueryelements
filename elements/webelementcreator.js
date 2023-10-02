@@ -403,13 +403,13 @@ function createWebElement (execlib, applib, templatelib) {
     }
     this.$element[ttip ? 'addClass' : 'removeClass']('allextooltipholder');
     this._tooltiptext = ttip;
-    if (this.$element.is('input') || this.$element.is('img')) {
+    if (this.$element.is('input') || this.$element.is('img') || this.$element.is('button')) {
       this.$element.attr('title', ttip);
       return true;
     }
     if (ttip) {
       if (this._tooltip) {
-        this.$element.html(ttip);
+        this._tooltip.html(ttip);
       } else {
         this._tooltip = jQuery('<span\>');
         this._tooltip.addClass('allextooltiptext');
