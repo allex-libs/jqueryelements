@@ -394,6 +394,18 @@ function createWebElement (execlib, applib, templatelib) {
     }
     return null;
   };
+  WebElement.prototype.get_visible = function () {
+    if (this.$element) {
+      return this.$element.css('visibility') == 'visible';
+    }
+    return null;
+  };
+  WebElement.prototype.set_visible = function (vis) {
+    if (this.$element) {
+      this.$element.css('visibility', vis ? 'visible' : 'hidden');
+    }
+    return true;
+  };
   //checked end
 
   //tooltip start

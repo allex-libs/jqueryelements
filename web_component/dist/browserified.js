@@ -71,6 +71,7 @@ function createCheckBoxElement (execlib, applib, templatelib, htmltemplateslib, 
 
 function CheckBoxElement (id, options) {
   DomElement.call(this, id, options);
+  this.clicked = this.createBufferableHookCollection();
   this.checked = null;
   this.internalChange = false;
 }
@@ -78,6 +79,10 @@ lib.inherit(CheckBoxElement, DomElement);
 CheckBoxElement.prototype.__cleanUp = function () {
   this.internalChange = null;
   this.checked = null;
+  if(this.clicked) {
+     this.clicked.destroy();
+  }
+  this.clicked = null;
   DomElement.prototype.__cleanUp.call(this);
 };
 
@@ -94,6 +99,9 @@ CheckBoxElement.prototype.set_checked = function (chk) {
   return true;
 };
 
+CheckBoxElement.prototype.onElementInputClicked = function (e) {
+  this.clicked.fire(e);
+};
 CheckBoxElement.prototype.onElementInputChanged = function () {
   if (!this.internalChange) {
     this.set('checked', this.$element.is(':checked'));
@@ -101,6 +109,7 @@ CheckBoxElement.prototype.onElementInputChanged = function () {
 };
 
 CheckBoxElement.prototype.initInput = function () {
+  this.$element.on('click', this.onElementInputClicked.bind(this));
   this.$element.on('change', this.onElementInputChanged.bind(this));
   this.set('checked', this.getConfigVal('checked'));
 };
@@ -1441,6 +1450,18 @@ function createWebElement (execlib, applib, templatelib) {
       return this.$element.prop('checked');
     }
     return null;
+  };
+  WebElement.prototype.get_visible = function () {
+    if (this.$element) {
+      return this.$element.css('visibility') == 'visible';
+    }
+    return null;
+  };
+  WebElement.prototype.set_visible = function (vis) {
+    if (this.$element) {
+      this.$element.css('visibility', vis ? 'visible' : 'hidden');
+    }
+    return true;
   };
   //checked end
 
