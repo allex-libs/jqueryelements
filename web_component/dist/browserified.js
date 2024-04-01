@@ -1176,7 +1176,7 @@ function createWebElement (execlib, applib, templatelib) {
   };
 
   WebElement.prototype.createjQueryElement = function () {
-    var selector, finder, classestoset, elem;
+    var selector, finder, classestoset, elem, innerhtml;
     selector = this.getConfigVal('self_selector')||'#';
     finder = this.tryToCreatejQueryElement();
     if (!(this.$element && this.$element.length)) {
@@ -1202,6 +1202,10 @@ function createWebElement (execlib, applib, templatelib) {
       elem = this.$element;
       classestoset.forEach(classsetterifnotpresent.bind(null, elem));
       elem = null;
+    }
+    innerhtml = this.innerHtml();
+    if (lib.isString(innerhtml)) {
+      this.$element.html(innerhtml);
     }
     if (this.shouldHideMarkupOnCreation()) {
       this.$element.hide();
@@ -1593,6 +1597,10 @@ function createWebElement (execlib, applib, templatelib) {
     }
 
     this.fireHook('onHidden');
+  };
+  
+  WebElement.prototype.innerHtml = function () {
+
   };
 
   WebElement.prototype.hideElement = function () {
